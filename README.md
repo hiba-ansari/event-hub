@@ -23,7 +23,3 @@ Local Event Hub is a platform designed to help people discover nearby events and
 ## Login Details
 - Email:Admin1@gmail.com    Password:admin1
 - Email:robert@email.com    Password:qwerty12345
-
-Contact
-For any questions or feedback, please reach out at s4026932@student.rmit.edu.au
-
