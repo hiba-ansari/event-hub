@@ -1,0 +1,238 @@
+:root {
+    --event-button-color: #fea649;
+    --OURblue: #4E598C;
+    --OURwhite: #F9F7F0;
+    --OURorang1: #F8C782;
+}
+
+* {
+    font-family: 'Roboto', sans-serif;
+    scroll-behavior: smooth;
+}
+
+h1, h3, .nav > a {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+}
+
+/* HEADER STUFF */
+.logo {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    color: var(--OURblue);
+    font-size: 45px;
+    display: flex;
+    align-items: center;
+    text-transform: uppercase;
+    text-shadow: 2px 2px 3px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.logo:hover {
+    transform: scale(1.05);
+    color: #fea649;
+}
+
+.topnav {
+    overflow: hidden;
+    color: var(--OURblue);
+    padding-left: 10%;
+    padding-right: 10%;
+    background-image: linear-gradient(#fbb663, #fcedd8);
+}
+
+.topnav a {
+    float: left;
+    display: block;
+    color: var(--OURblue);
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+    transition-duration: 0.4s;
+}
+
+.topnav a:hover {
+    color: var(--event-button-color);
+    font-size: 18px;
+    transition: all 0.2s ease-in-out;
+}
+
+.nav {
+    color: var(--OURorang1) !important;
+    margin-left: 3%;
+    margin-right: 3%;
+    font-size: 17px;
+    font-weight: 500;
+    float: right;
+    margin: 10px;
+}
+
+.footer {
+    background-color: var(--OURblue);
+    color: var(--OURwhite);
+    padding: 10px 0;
+    width: 100%;
+    font-size: 0.8em;
+    position: relative;
+    bottom: 0;
+}
+
+.footer-content {
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding: 0 10px;
+}
+
+.footer-column {
+    display: flex;
+    flex-direction: column;
+    margin: 5px;
+    min-width: 120px;
+}
+
+.footer-logo img {
+    max-width: 100px;
+}
+
+.footer-column h3 {
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+.footer-column a {
+    color: var(--event-button-color);
+    text-decoration: none;
+    margin: 3px 0;
+    font-weight: bold;
+    font-size: 12px;
+    transition: color 0.3s ease;
+}
+
+.footer-column a:hover {
+    color: var(--OURorang1);
+}
+
+/* LOGIN PAGE SPECIFIC STYLES */
+body {
+    background-color: var(--OURwhite);
+    color: var(--OURblue);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+nav {
+    width: 100%;
+    max-width: 600px;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    background-color: grey;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+nav a {
+    color: white;
+    text-decoration: none;
+    font-size: 1.1em;
+    padding: 8px;
+    transition: color 0.3s ease;
+}
+
+nav a:hover {
+    color: var(--event-button-color);
+}
+
+nav img {
+    width: 24px;
+    height: 24px;
+}
+
+.forms {
+    width: 100%;
+    max-width: 350px;
+    background-color: var(--OURorang1);
+    color: var(--OURblue);
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    text-align: center;
+}
+
+.forms h2 {
+    font-family: 'Poppins', sans-serif;
+    color: var(--OURblue);
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: var(--OURblue);
+    text-align: left;
+}
+
+input[type="email"], input[type="password"], input[type="text"] {
+    width: 100%;
+    border: 1px solid var(--OURblue);
+    border-radius: 5px;
+    background-color: var(--OURwhite);
+    padding: 10px;
+    margin-bottom: 15px;
+    font-size: 1em;
+    color: var(--OURblue);
+}
+
+button[type="submit"] {
+    width: 100%;
+    background-color: var(--event-button-color);
+    color: var(--OURwhite);
+    padding: 10px;
+    font-size: 1em;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button[type="submit"]:hover {
+    background-color: #e7963a;
+}
+
+.error, .success {
+    text-align: center;
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+.error {
+    color: red;
+}
+
+.success {
+    color: green;
+}
+
+p {
+    text-align: center;
+    margin-top: 10px;
+}
+
+p a {
+    color: var(--OURblue);
+    text-decoration: underline;
+    transition: color 0.3s ease;
+}
+
+p a:hover {
+    color: var(--event-button-color);
+}

@@ -1,0 +1,37 @@
+:root {
+    --event-button-color: #fea649;
+    --OURblue: #4E598C;
+    --OURwhite: #F9F7F0;
+    --OURorang1: #F8C782;
+  }
+
+.account-details {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background-color: lightgray;
+    margin-left: 10vw;
+    margin-right: 10vw;
+}
+.account-details > .user-info  {
+    background-color: var(--OURwhite);
+    border-radius: 5px;
+    border: 2px solid var(--OURorang1);
+    padding: 10px;
+}
+
+.pfp-container {
+    display: block;
+    background-color: var(--OURwhite);
+    border-radius: 50%;
+    border: 3px solid var(--event-button-color);
+    width: 160px;
+    height: 160px;
+    position: relative;
+    margin: auto;
+}
+.pfp-container p {
+    position: absolute;
+    text-align: center;
+    transform: translateY(-50%);
+}

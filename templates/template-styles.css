@@ -1,0 +1,35 @@
+button:hover {
+    filter: brightness(85%);
+}
+
+nav {
+    background-color: grey;
+    margin: 0px;
+    padding: 0px;
+    overflow: hidden;
+}
+
+nav img {
+    width: 50px;
+    display: inline;
+    margin-left: 15px;
+}
+
+nav a {
+    display: inline;
+    float: right;
+    color: white;
+    margin-right: 20px;
+    padding: 16px 16px;
+    text-align: center;
+}
+
+a:hover {
+    background-color: rgb(96, 96, 96);
+}
+
+footer {
+    background-color: grey;
+    color: white;
+    padding: 10px 10px;
+}
