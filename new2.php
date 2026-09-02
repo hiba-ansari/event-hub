@@ -1,34 +1,37 @@
 <?php
-    ob_start();
-    session_start();
-    error_reporting(E_ALL ^ E_NOTICE);
+ob_start();
+session_start();
+error_reporting(E_ALL ^ E_NOTICE);
 
-    //echo session details
-    // $sessionDetails = implode(",", $_SESSION);
-    // echo "\$sessionDetails = " . $sessionDetails . "<br>"; 
-    // echo "\$_SESSION = " . json_encode($_SESSION) . "<br>";
-    echo "\$_SESSION['email'] = " . $_SESSION['email'] . "<br>";
-    echo "\$_SESSION['userID'] = " . $_SESSION['userID'] . "<br>";
+//echo session details
+// $sessionDetails = implode(",", $_SESSION);
+// echo "\$sessionDetails = " . $sessionDetails . "<br>"; 
+// echo "\$_SESSION = " . json_encode($_SESSION) . "<br>";
+echo "\$_SESSION['email'] = " . $_SESSION['email'] . "<br>";
+echo "\$_SESSION['userID'] = " . $_SESSION['userID'] . "<br>";
 
-    //database connection and initialising variables
-    $dsn = 'mysql:host=talsprddb02.int.its.rmit.edu.au;dbname=COSC3046_2402_UGRD_1479_G12';
-    $user = 'COSC3046_2402_UGRD_1479_G12';
-    $pass = 'LtEXbUiTF7Fm';
-    $conn = new PDO($dsn, $user, $pass);
-    $email_error = '';
-    $pass_error = '';
-    $pass2_error = '';
+// Load local database configuration
+require_once 'config/database_local.php';
 
-    //CHECK IF LOGGED IN
-    if (isset($_SESSION['userID']) || !empty($_SESSION['userID'])) {
-        $isLoggedIn = TRUE;
-    }
-    else {
-        $isLoggedIn = FALSE;
-    }
-    echo "logged in? " . json_encode($isLoggedIn);
+// Database connection using local config
+$dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME;
+$user = DB_USER;
+$pass = DB_PASS;
+$conn = new PDO($dsn, $user, $pass);
+$email_error = '';
+$pass_error = '';
+$pass2_error = '';
 
-    ?>
+//CHECK IF LOGGED IN
+if (isset($_SESSION['userID']) || !empty($_SESSION['userID'])) {
+    $isLoggedIn = TRUE;
+}
+else {
+    $isLoggedIn = FALSE;
+}
+echo "logged in? " . json_encode($isLoggedIn);
+
+?>
 
 <!DOCTYPE html>
 <html lang="en">

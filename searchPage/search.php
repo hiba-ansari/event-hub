@@ -1,7 +1,8 @@
 <?php
+    error_log("*************** Inside search.php");
     session_start();
     if (isset($_GET["query"])) {
-        $key = "abf15d2639c68a5ede04f73af3abc209f92dca4139559c83d2eadadc378d8c1a";
+        $key = "c30be58e6984eafadc346b28a3422bd9638cbc88c9783243ad3b7310f81590e1";
         $userQuery = $_GET["query"];
         $urlStart = 10;
         if (isset($_GET["page-no"])) {
@@ -12,7 +13,8 @@
         }
         $offset = ($pageNo - 1) * 10;
         
-        $api_url = 'https://serpapi.com/search.json?engine=google_events&q=australia%20'.$userQuery.'&hl=en&api_key='.$key."&start=". $offset; //1 --> 0*10 = 0 = page 1
+        $api_url = 'https://serpapi.com/search.json?engine=google&q=australia%20'.$userQuery.'&hl=en&api_key='.$key."&start=". $offset; //1 --> 0*10 = 0 = page 1
+        error_log("DEBUG: ******************** Attempting to call API URL: " . $api_url);
         $response = file_get_contents($api_url);
         $data = json_decode($response, true);
         $events = $data['events_results'] ?? [];

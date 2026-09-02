@@ -1,6 +1,8 @@
 <?php
     ob_start();
-    $key = "abf15d2639c68a5ede04f73af3abc209f92dca4139559c83d2eadadc378d8c1a";
+    $userHobbies = $_SESSION['hobbies'];
+    $userLocation = $_SESSION['location'];
+    $key = "c30be58e6984eafadc346b28a3422bd9638cbc88c9783243ad3b7310f81590e1";
 
     $directory = '../pages/';
 
@@ -38,9 +40,13 @@
             ' . file_get_contents($templatePath);
 
             file_put_contents($filename, $pageContent);
-            $dsn = 'mysql:host=talsprddb02.int.its.rmit.edu.au;dbname=COSC3046_2402_UGRD_1479_G12';
-            $user = 'COSC3046_2402_UGRD_1479_G12';
-            $pass = 'LtEXbUiTF7Fm';
+            // Load local database configuration
+            require_once '../config/database_local.php';
+
+            // Database connection using local config
+            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME;
+            $user = DB_USER;
+            $pass = DB_PASS;
             $conn = new PDO($dsn, $user, $pass);
             $currentPageUrl = 'http://'.$_SERVER["HTTP_HOST"].$_SERVER["REQUEST_URI"];
             $values = parse_url($currentPageUrl);
@@ -57,7 +63,17 @@
                     VALUES ('$title', '$start_date', '$date', '$address', '$filename', '$image');";
             $result = $conn->query($sql);
         }
-    }    
+    } 
+    
+    $api_url_interests = 'https://serpapi.com/search.json?engine=google_events&q=australia%20'.$userHobbies.'&hl=en&api_key='.$key;
+    $response = file_get_contents($api_url_interests);
+    $interestsData = json_decode($response, true);
+    $interestsEvents = $interestsData['events_results'] ?? [];
+
+    $api_url_location = 'https://serpapi.com/search.json?engine=google_events&q=australia%20'.$userLocation.'&hl=en&api_key='.$key;
+    $response = file_get_contents($api_url_location);
+    $locationData = json_decode($response, true);
+    $locationEvents = $locationData['events_results'] ?? [];
 ?>
 <!DOCTYPE html>
     <html lang="en">
