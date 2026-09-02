@@ -6,8 +6,12 @@ DEST_DIR="/Applications/XAMPP/xamppfiles/htdocs/event-hub"
 
 echo "Deploying files from $SOURCE_DIR to $DEST_DIR..."
 
-# Copy all files and directories recursively, preserving attributes
-cp -r "$SOURCE_DIR"/. "$DEST_DIR"
+# Use rsync to copy files, excluding hidden files/directories like .git
+# -a: archive mode (preserves permissions, times, etc.)
+# -v: verbose output
+# --delete: delete files in dest that are not in source (optional, use carefully)
+# --exclude: exclude hidden files/dirs starting with .
+rsync -av --exclude '.*' "$SOURCE_DIR/" "$DEST_DIR/"
 
 # Set appropriate permissions for PHP files (optional, but recommended)
 find "$DEST_DIR" -name "*.php" -exec chmod 644 {} \;

@@ -1,5 +1,5 @@
 <?php
-    error_log("*************** Inside search.php");
+    error_log("*************** Inside search.php (XAMPP htdocs version)");
     session_start();
     if (isset($_GET["query"])) {
         $key = "c30be58e6984eafadc346b28a3422bd9638cbc88c9783243ad3b7310f81590e1";
@@ -14,12 +14,19 @@
         $offset = ($pageNo - 1) * 10;
         
         $api_url = 'https://serpapi.com/search.json?engine=google&q=australia%20'.$userQuery.'&hl=en&api_key='.$key."&start=". $offset; //1 --> 0*10 = 0 = page 1
-        error_log("DEBUG: ******************** Attempting to call API URL: " . $api_url);
+        error_log("DEBUG: Attempting to call API URL: " . $api_url);
         $response = file_get_contents($api_url);
         $data = json_decode($response, true);
-        $events = $data['events_results'] ?? [];
+        // Updated to use 'organic_results' for 'google' engine
+        $events = $data['organic_results'] ?? [];
 
         $directory = '../pages/';
+
+        // Ensure the directory exists
+        if (!is_dir($directory)) {
+            mkdir($directory, 0755, true); // Create directory recursively with permissions
+            error_log("DEBUG: Created directory $directory");
+        }
 
         $templatePath = '../eventDetails/details.php';
 
@@ -27,19 +34,20 @@
 
         if (!empty($events)) {
             foreach ($events as $index => $event) {
-                $title = is_array($event['title']) ? implode(', ', $event['title']) : ($event['title']);
-                $date = is_array($event['date']['when']) ? implode(', ', $event['date']['when']) : ($event['date']['when']);
-                $address = is_array($event['address']) ? implode(', ', $event['address']) : ($event['address']);
-                if (isset($event['description'])) {
-                    $description = is_array($event['description']) ? implode(', ', $event['description']) : ($event['description']);
-                }
-                else {
-                    $description = '';
-                }
-                $image = $event['thumbnail'];
-                $start_date = is_array($event['date']['start_date']) ? implode(', ', $event['date']['start_date']) : ($event['date']['start_date']);
+                // Extract data from organic_results structure
+                $title = $event['title'] ?? 'No Title Found';
+                // Date and address are not available in organic results, use placeholder or query term
+                $date = 'See Link'; // Placeholder as date is not in organic results
+                $address = 'See Link'; // Placeholder as address is not in organic results
+                $description = $event['snippet'] ?? 'No description available.';
+                $image = $event['thumbnail'] ?? 'https://via.placeholder.com/150'; // Use thumbnail if available, otherwise a placeholder
+                // Use the 'link' field from organic results as the event link
+                $link_from_api = $event['link'] ?? '#';
 
-                $file = preg_replace('/[^a-zA-Z0-9]/', '', $title . '_' . $date);
+                // Generate a safe filename based on title and query, avoiding filesystem issues
+                $safe_title_part = preg_replace('/[^a-zA-Z0-9]/', '_', $title);
+                $safe_query_part = preg_replace('/[^a-zA-Z0-9]/', '_', $userQuery);
+                $file = $safe_title_part . '_' . $safe_query_part . '_' . $index;
 
                 $filename = $directory . $file . '.php';
 
@@ -48,31 +56,41 @@
                     $eventTitle = "' . addslashes($title) . '";
                     $eventDate = "' . addslashes($date) . '"; 
                     $eventAddress = "' . addslashes($address) . '";
-                    $eventImage = "' . $image . '";
+                    $eventImage = "' . addslashes($image) . '";
                     $description = "' .addslashes($description) . '";
                     $link ="' .addslashes($filename) . '";
+                    // Store the actual external link from the API
+                    $externalLink = "' . addslashes($link_from_api) . '";
                 ?>
                 ' . file_get_contents($templatePath);
 
                 file_put_contents($filename, $pageContent);
-                $dsn = 'mysql:host=talsprddb02.int.its.rmit.edu.au;dbname=COSC3046_2402_UGRD_1479_G12';
-                $user = 'COSC3046_2402_UGRD_1479_G12';
-                $pass = 'LtEXbUiTF7Fm';
+                // Load local database configuration
+                require_once '../config/database_local.php';
+
+                // Database connection using local config
+                $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME;
+                $user = DB_USER;
+                $pass = DB_PASS;
                 $conn = new PDO($dsn, $user, $pass);
+                $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); // Enable exception mode for PDO
+
                 $currentPageUrl = 'http://'.$_SERVER["HTTP_HOST"].$_SERVER["REQUEST_URI"];
                 $values = parse_url($currentPageUrl);
-                $start_date = strtotime($start_date);
-                $start_date = date("Y-m-d", $start_date);
-                $current = date("Y-m-d");
+                // For events without a specific date, use a default or current date, or skip date manipulation
+                $start_date = date("Y-m-d"); // Using current date as a fallback
 
-                if ($current > $start_date) {
-                    $start_date = date("Y-m-d", strtotime("+1 year", strtotime($start_date)));
-                }
+                // Use prepared statements to avoid SQL injection
+                $sql = "INSERT INTO Events (EventName, EventDate, EventWhen, EventAddress, Link, EventImage) VALUES (:eventName, :eventDate, :eventWhen, :eventAddress, :link, :eventImage)";
+                $stmt = $conn->prepare($sql);
+                $stmt->bindParam(':eventName', $title, PDO::PARAM_STR);
+                $stmt->bindParam(':eventDate', $start_date, PDO::PARAM_STR);
+                $stmt->bindParam(':eventWhen', $date, PDO::PARAM_STR);
+                $stmt->bindParam(':eventAddress', $address, PDO::PARAM_STR);
+                $stmt->bindParam(':link', $filename, PDO::PARAM_STR);
+                $stmt->bindParam(':eventImage', $image, PDO::PARAM_STR);
 
-                
-                $sql = "INSERT INTO Events (EventName, EventDate, EventWhen, EventAddress, Link, EventImage, Price)
-                        VALUES ('$title', '$start_date', '$date', '$address', '$filename', '$image', ROUND(RAND() * 100, 2));";
-                $result = $conn->query($sql);
+                $stmt->execute();
             }
         }
     } 
@@ -275,11 +293,20 @@
                             </div>
                     ";
 
-                    $response = file_get_contents($api_url);
+                    $api_url_paginated = 'https://serpapi.com/search.json?engine=google&q=australia%20'.$userQuery.'&hl=en&api_key='.$key."&start=". (($pageNo + 1 - 1) * 10); // Use the next page offset
+                    error_log("DEBUG: Attempting to call paginated API URL: " . $api_url_paginated);
+                    $response = file_get_contents($api_url_paginated);
                     $data = json_decode($response, true);
-                    $events = $data['events_results'] ?? [];
+                    // Updated to use 'organic_results' for 'google' engine
+                    $events = $data['organic_results'] ?? [];
 
                     $directory = '../pages/';
+
+                    // Ensure the directory exists (same check as above)
+                    if (!is_dir($directory)) {
+                        mkdir($directory, 0755, true); // Create directory recursively with permissions
+                        error_log("DEBUG: Created directory $directory (in pagination block)");
+                    }
 
                     $templatePath = '../eventDetails/details.php';
 
@@ -287,19 +314,20 @@
 
                     if (!empty($events)) {
                         foreach ($events as $index => $event) {
-                            $title = is_array($event['title']) ? implode(', ', $event['title']) : ($event['title']);
-                            $date = is_array($event['date']['when']) ? implode(', ', $event['date']['when']) : ($event['date']['when']);
-                            $address = is_array($event['address']) ? implode(', ', $event['address']) : ($event['address']);
-                            if (isset($event['description'])) {
-                                $description = is_array($event['description']) ? implode(', ', $event['description']) : ($event['description']);
-                            }
-                            else {
-                                $description = '';
-                            }
-                            $image = $event['thumbnail'];
-                            $start_date = is_array($event['date']['start_date']) ? implode(', ', $event['date']['start_date']) : ($event['date']['start_date']);
+                            // Extract data from organic_results structure
+                            $title = $event['title'] ?? 'No Title Found';
+                            // Date and address are not available in organic results, use placeholder or query term
+                            $date = 'See Link'; // Placeholder as date is not in organic results
+                            $address = 'See Link'; // Placeholder as address is not in organic results
+                            $description = $event['snippet'] ?? 'No description available.';
+                            $image = $event['thumbnail'] ?? 'https://via.placeholder.com/150'; // Use thumbnail if available, otherwise a placeholder
+                            // Use the 'link' field from organic results as the event link
+                            $link_from_api = $event['link'] ?? '#';
 
-                            $file = preg_replace('/[^a-zA-Z0-9]/', '', $title . '_' . $date);
+                            // Generate a safe filename based on title and query, avoiding filesystem issues
+                            $safe_title_part = preg_replace('/[^a-zA-Z0-9]/', '_', $title);
+                            $safe_query_part = preg_replace('/[^a-zA-Z0-9]/', '_', $userQuery);
+                            $file = $safe_title_part . '_' . $safe_query_part . '_' . $index;
 
                             $filename = $directory . $file . '.php';
 
@@ -308,31 +336,41 @@
                                 $eventTitle = "' . addslashes($title) . '";
                                 $eventDate = "' . addslashes($date) . '"; 
                                 $eventAddress = "' . addslashes($address) . '";
-                                $eventImage = "' . $image . '";
+                                $eventImage = "' . addslashes($image) . '";
                                 $description = "' .addslashes($description) . '";
                                 $link ="' .addslashes($filename) . '";
+                                // Store the actual external link from the API
+                                $externalLink = "' . addslashes($link_from_api) . '";
                             ?>
                             ' . file_get_contents($templatePath);
 
                             file_put_contents($filename, $pageContent);
-                            $dsn = 'mysql:host=talsprddb02.int.its.rmit.edu.au;dbname=COSC3046_2402_UGRD_1479_G12';
-                            $user = 'COSC3046_2402_UGRD_1479_G12';
-                            $pass = 'LtEXbUiTF7Fm';
+                            // Load local database configuration
+                            require_once '../config/database_local.php';
+
+                            // Database connection using local config
+                            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME;
+                            $user = DB_USER;
+                            $pass = DB_PASS;
                             $conn = new PDO($dsn, $user, $pass);
+                            $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); // Enable exception mode for PDO
+
                             $currentPageUrl = 'http://'.$_SERVER["HTTP_HOST"].$_SERVER["REQUEST_URI"];
                             $values = parse_url($currentPageUrl);
-                            $start_date = strtotime($start_date);
-                            $start_date = date("Y-m-d", $start_date);
-                            $current = date("Y-m-d");
+                            // For events without a specific date, use a default or current date, or skip date manipulation
+                            $start_date = date("Y-m-d"); // Using current date as a fallback
 
-                            if ($current > $start_date) {
-                                $start_date = date("Y-m-d", strtotime("+1 year", strtotime($start_date)));
-                            }
+                            // Use prepared statements to avoid SQL injection
+                            $sql = "INSERT INTO Events (EventName, EventDate, EventWhen, EventAddress, Link, EventImage) VALUES (:eventName, :eventDate, :eventWhen, :eventAddress, :link, :eventImage)";
+                            $stmt = $conn->prepare($sql);
+                            $stmt->bindParam(':eventName', $title, PDO::PARAM_STR);
+                            $stmt->bindParam(':eventDate', $start_date, PDO::PARAM_STR);
+                            $stmt->bindParam(':eventWhen', $date, PDO::PARAM_STR);
+                            $stmt->bindParam(':eventAddress', $address, PDO::PARAM_STR);
+                            $stmt->bindParam(':link', $filename, PDO::PARAM_STR);
+                            $stmt->bindParam(':eventImage', $image, PDO::PARAM_STR);
 
-                            
-                            $sql = "INSERT INTO Events (EventName, EventDate, EventWhen, EventAddress, Link, EventImage)
-                                    VALUES ('$title', '$start_date', '$date', '$address', '$filename', '$image');";
-                            $result = $conn->query($sql);
+                            $stmt->execute();
                         }
                     }
                 }
