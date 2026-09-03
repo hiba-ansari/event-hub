@@ -176,10 +176,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['archive_account']) && 
         </a>
     </div>
     <div class='column right'>
-        <p class='nav'><a href="../profilePage/account.php">Account</a></p>
         <?php if (isset($_SESSION['userID'])): ?>
+            <p class='nav'><a href="../profilePage/view_profile.php">Account</a></p>
             <p class='nav'><a href="../shoppingCart/shopping-cart.php">Cart</a></p>
             <p class='nav'><a href="../calendar/events.php">My Events</a></p>
+        <?php else: ?>
+            <p class='nav'><a href="../profilePage/account.php">Account</a></p>
         <?php endif; ?>
         <p class='nav'><a href="../discussion/discussion.php">Discussions</a></p>
         <p class='nav'><a href="../searchPage/search.php">Search</a></p>

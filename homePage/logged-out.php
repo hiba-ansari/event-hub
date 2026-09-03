@@ -151,7 +151,7 @@
             <a href='../homePage/homepage.php' class="logo" style='font-size:40px;font-weight:600'><img src='../images/logo.png' style='width:50px;vertical-align:middle'> Local Event Hub</a>
         </div>
         <div class='column right'>
-            <p class='nav'><a href="../profilePage/account.php">Log in</a></p>
+            <p class='nav'><a href="../profilePage/login.php">Log in</a></p>
             <p class='nav'><a href="../calendar/events.php">My Events</a></p>
             <p class='nav'><a href="../discussion/discussion.php">Discussions</a></p>
             <p class='nav'><a href="../searchPage/search.php">Search</a></p>
