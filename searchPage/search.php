@@ -1,5 +1,5 @@
 <?php
-    error_log("*************** Inside search.php (XAMPP htdocs version) - Using events_results");
+    error_log("*************** Inside search.php (XAMPP htdocs version) - Using events_results - NO LINKS");
     session_start();
     if (isset($_GET["query"])) {
         $key = "c30be58e6984eafadc346b28a3422bd9638cbc88c9783243ad3b7310f81590e1";
@@ -22,18 +22,6 @@
         // Use 'events_results' which is present when searching for events like 'art events'
         $events = $data['events_results'] ?? [];
 
-        $directory = '../pages/';
-
-        // Ensure the directory exists (should be done manually beforehand)
-        // This check is just for logging if it happens to run and succeed unexpectedly.
-        if (!is_dir($directory)) {
-            error_log("ERROR: Directory $directory does not exist. Please create it manually.");
-        }
-
-        $templatePath = '../eventDetails/details.php';
-
-        $pageContent = file_get_contents($templatePath);
-
         if (!empty($events)) {
             foreach ($events as $index => $event) {
                 // Extract data from events_results structure
@@ -53,59 +41,15 @@
                 $description = $event['type'] ?? 'No description available.'; // Using 'type' as description
                 $image = $event['thumbnail'] ?? 'https://via.placeholder.com/150'; // Use thumbnail if available
 
-                // Generate a safe filename based on title and query, avoiding filesystem issues
-                $safe_title_part = preg_replace('/[^a-zA-Z0-9]/', '_', $title);
-                $safe_query_part = preg_replace('/[^a-zA-Z0-9]/', '_', $userQuery);
-                $file = $safe_title_part . '_' . $safe_query_part . '_' . $index;
-
-                $filename = $directory . $file . '.php';
-
-                $pageContent = '
-                <?php
-                    $eventTitle = "' . addslashes($title) . '";
-                    $eventDate = "' . addslashes($full_date_str) . '"; 
-                    $eventAddress = "' . addslashes($address) . '";
-                    $eventImage = "' . addslashes($image) . '";
-                    $description = "' .addslashes($description) . '";
-                    $link ="' .addslashes($filename) . '";
-                    // No external link from events_results, so we can leave it blank or point to the generated page
-                    $externalLink = "' . addslashes($filename) . '";
-                ?>
-                ' . file_get_contents($templatePath);
-
-                file_put_contents($filename, $pageContent);
-                // Load local database configuration
-                require_once '../config/database_local.php';
-
-                // Database connection using local config
-                $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME;
-                $user = DB_USER;
-                $pass = DB_PASS;
-                $conn = new PDO($dsn, $user, $pass);
-                $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); // Enable exception mode for PDO
-
-                // For events with a specific date, attempt to parse it. Use current date as fallback.
-                $start_date = date("Y-m-d"); // Default fallback
-                if ($date) {
-                    // Try to parse the date string (e.g., "Sep 5")
-                    $parsed_timestamp = strtotime($date);
-                    if ($parsed_timestamp !== false) {
-                        $start_date = date("Y-m-d", $parsed_timestamp);
-                    }
-                    // If parsing fails, $start_date remains the fallback
-                }
-
-                // Use prepared statements to avoid SQL injection
-                $sql = "INSERT INTO Events (EventName, EventDate, EventWhen, EventAddress, Link, EventImage) VALUES (:eventName, :eventDate, :eventWhen, :eventAddress, :link, :eventImage)";
-                $stmt = $conn->prepare($sql);
-                $stmt->bindParam(':eventName', $title, PDO::PARAM_STR);
-                $stmt->bindParam(':eventDate', $start_date, PDO::PARAM_STR);
-                $stmt->bindParam(':eventWhen', $full_date_str, PDO::PARAM_STR);
-                $stmt->bindParam(':eventAddress', $address, PDO::PARAM_STR);
-                $stmt->bindParam(':link', $filename, PDO::PARAM_STR);
-                $stmt->bindParam(':eventImage', $image, PDO::PARAM_STR);
-
-                $stmt->execute();
+                // Store event data in array instead of generating files and inserting into database
+                $event_data[] = [
+                    'title' => $title,
+                    'date' => $full_date_str,
+                    'address' => $address,
+                    'description' => $description,
+                    'image' => $image,
+                    'original_index' => $index
+                ];
             }
         }
     } 
@@ -176,40 +120,22 @@
                 
                 <?php
                     error_reporting(E_ALL ^ E_NOTICE);
-                    if (!empty($events)) {
-                        foreach ($events as $index => $event) {
-                            // Use the new structure from events_results
-                            $title = is_array($event['title']) ? implode(', ', $event['title']) : ($event['title']);
-                            // Combine date and time from the event object
-                            $date_part = $event['date'] ?? 'Date TBD';
-                            $time_part = $event['time'] ?? '';
-                            if ($date_part && $time_part) {
-                                $date = $date_part . ' at ' . $time_part;
-                            } elseif ($date_part) {
-                                $date = $date_part;
-                            } else {
-                                $date = 'Time TBD';
-                            }
-                            // Join address array parts
-                            $address = is_array($event['address']) ? implode(', ', $event['address']) : ($event['address']);
-                            $image = $event['thumbnail'];
-                            // For start_date, we used the parsed date for DB insertion, can reuse that logic or just use the raw date part
-                            $start_date_raw = $event['date'] ?? date("Y-m-d"); // Fallback to today if no date
-                            $parsed_timestamp_for_display = strtotime($start_date_raw);
-                            $start_date = $parsed_timestamp_for_display ? date("Y-m-d", $parsed_timestamp_for_display) : date("Y-m-d");
+                    // Iterate over the collected event data
+                    if (!empty($event_data)) {
+                        foreach ($event_data as $event_item) {
+                            $title = $event_item['title'];
+                            $date = $event_item['date'];
+                            $address = $event_item['address'];
+                            $image = $event_item['image'];
+                            $description = $event_item['description'];
 
-                            $file = preg_replace('/[^a-zA-Z0-9]/', '', $title . '_' . $date);
-
-                            $filename = $directory . $file . '.php';
-                            
-                            $eventsString = implode(', ', $event);
-                            //echo "$eventsString";
-                            //reformatting
+                            // Determine category based on the event title (similar to existing logic)
+                            $eventsString = $title . ' ' . $address . ' ' . $date;
                             if (stripos($eventsString, 'gaming') || stripos($eventsString, 'game')) {
                                 $category = "🎮 GAMING";
                             }
-                            else if (stripos($eventsString, 'art') || 
-                            stripos($eventsString, 'arts') || 
+                            else if (stripos($eventsString, 'art') ||
+                            stripos($eventsString, 'arts') ||
                             stripos($eventsString, 'gallery')) {
                                 $category = "🎨 ART";
                             }
@@ -223,46 +149,14 @@
                                 $category = "";
                             }
 
-                            $sql = "Select EventID from Events where link = '$filename'";
-                            $result = $conn->query($sql);
-                            $row = $result->fetch(PDO::FETCH_ASSOC);
-                            $eventID = $row['EventID'];
-                            $sql = "SELECT * FROM SavedEvents WHERE EventID = '$eventID' AND UserID = '$userID'";
-                            $result = $conn->query($sql);
-                            $rows = $result->fetchAll(PDO::FETCH_ASSOC);
-                            
-
-                            if (isset($_SESSION['userID'])){
-                                $userID = $_SESSION['userID'];
-                                $sql = "SELECT * FROM SavedEvents WHERE EventID = '$eventID' AND UserID = '$userID'";
-                                $result = $conn->query($sql);
-                                $rows = $result->fetchAll(PDO::FETCH_ASSOC);
-                                if (isset($_POST['add-to-calendar'])) {
-                                    $eventID = $_POST['eventID'];
-                                    $sql = "SELECT * FROM SavedEvents WHERE EventID = '$eventID' AND UserID = '$userID'";
-                                    $result = $conn->query($sql);
-                                    $rows = $result->fetchAll(PDO::FETCH_ASSOC);
-                                    if (empty($rows)) {
-                                        $sql = "INSERT INTO SavedEvents (EventID, UserID) VALUES ('$eventID', '$userID')";
-                                        $insert = $conn->query($sql);
-                                    }
-                                    else {
-                                        $sql = "DELETE FROM SavedEvents Where EventID = '$eventID' AND UserID = '$userID'";
-                                        $insert = $conn->query($sql);
-                                    }
-                                    
-                                    header("Location: " . $_SERVER['PHP_SELF'] . "?query=" . $userQuery);
-                                    exit();
-                                }
-                            }
-                            
+                            // Use a div/span instead of an anchor tag for the image and title
                             if (empty($_SESSION['userID']) || !isset($_SESSION['userID'])) {
                                 echo "
                                     <div class='search-event-container'>
-                                        <a href='$filename'><img src='$image' alt='$title'></a>
-                                        <h3 id='title'><a href='$filename' id='event-link'>$title</a></h3>
+                                        <div><img src='$image' alt='$title'></div>
+                                        <h3 id='title'><div id='event-link'>$title</div></h3>
                                         <p id='description'><strong>Date:</strong> $date<br><strong>Address:</strong> $address</p>
-                                        <button onclick='copyEventLink(\"$filename\"); changeButtonText(this)' class='share-event-btn' style='cursor: pointer;'>Share</button>
+                                        <!-- Share button removed as there's no specific link to share -->
                                         <div class='search-event-tag-container'>
                                                 <p>$category</p>
                                         </div>
@@ -271,27 +165,13 @@
                             }
                             else {
                                 if (isset($_SESSION['userID'])) {
+                                    // Note: Saving functionality is removed as it relied on database links
                                     echo "
                                     <div class='search-event-container'>
-                                        <a href='$filename'><img src='$image' alt='$title'></a>
-                                        <h3 id='title'><a href='$filename' id='event-link'>$title</a></h3>
+                                        <div><img src='$image' alt='$title'></div>
+                                        <h3 id='title'><div id='event-link'>$title</div></h3>
                                         <p id='description'><strong>Date:</strong> $date<br><strong>Address:</strong> $address</p>
-                                        <button onclick='copyEventLink(\"$filename\"); changeButtonText(this)' class='share-event-btn' style='cursor: pointer;'>Share</button>
-                                        <div ";
-                            if (empty($_SESSION['userID'])){echo "style=\"display:none\"";}
-                            echo ">
-                                <form method=\"POST\">
-                                    <input type='hidden' name='eventID' value='$eventID'>
-                            ";
-                            if (empty($rows)) {
-                                echo "<button name=\"add-to-calendar\" class='save-event-btn' style='cursor: pointer;'>+</button>";
-                            }
-                            else {
-                                echo "<button name=\"add-to-calendar\" class='saved-event-btn' style='cursor: pointer;'>&#10003;</button>";
-                            }    
-                            echo "
-                                </form>
-                                </div>
+                                        <!-- Share button removed as there's no specific link to share -->
                                         <div class='search-event-tag-container'>
                                                 <p>$category</p>
                                         </div>
@@ -331,17 +211,7 @@
                     // Use 'events_results' which is present when searching for events like 'art events'
                     $events = $data['events_results'] ?? [];
 
-                    $directory = '../pages/';
-
-                    // Ensure the directory exists (should be done manually beforehand)
-                    if (!is_dir($directory)) {
-                         error_log("ERROR: Directory $directory does not exist. Please create it manually.");
-                    }
-
-                    $templatePath = '../eventDetails/details.php';
-
-                    $pageContent = file_get_contents($templatePath);
-
+                    // Skip file generation and database insertion for pagination as well
                     if (!empty($events)) {
                         foreach ($events as $index => $event) {
                             // Extract data from events_results structure
@@ -361,59 +231,44 @@
                             $description = $event['type'] ?? 'No description available.'; // Using 'type' as description
                             $image = $event['thumbnail'] ?? 'https://via.placeholder.com/150'; // Use thumbnail if available
 
-                            // Generate a safe filename based on title and query, avoiding filesystem issues
-                            $safe_title_part = preg_replace('/[^a-zA-Z0-9]/', '_', $title);
-                            $safe_query_part = preg_replace('/[^a-zA-Z0-9]/', '_', $userQuery);
-                            $file = $safe_title_part . '_' . $safe_query_part . '_' . $index;
+                            // Append data to the main event_data array
+                            $event_data[] = [
+                                'title' => $title,
+                                'date' => $full_date_str,
+                                'address' => $address,
+                                'description' => $description,
+                                'image' => $image,
+                                'original_index' => $index // Keep index for uniqueness if needed later
+                            ];
 
-                            $filename = $directory . $file . '.php';
+                            // Skip file generation and database insertion steps
+                            // $filename = $directory . $file . '.php';
+                            // $pageContent = '...' . file_get_contents($templatePath);
+                            // file_put_contents($filename, $pageContent);
 
-                            $pageContent = '
-                            <?php
-                                $eventTitle = "' . addslashes($title) . '";
-                                $eventDate = "' . addslashes($full_date_str) . '"; 
-                                $eventAddress = "' . addslashes($address) . '";
-                                $eventImage = "' . addslashes($image) . '";
-                                $description = "' .addslashes($description) . '";
-                                $link ="' .addslashes($filename) . '";
-                                // No external link from events_results, so we can leave it blank or point to the generated page
-                                $externalLink = "' . addslashes($filename) . '";
-                            ?>
-                            ' . file_get_contents($templatePath);
-
-                            file_put_contents($filename, $pageContent);
-                            // Load local database configuration
-                            require_once '../config/database_local.php';
-
-                            // Database connection using local config
-                            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME;
-                            $user = DB_USER;
-                            $pass = DB_PASS;
-                            $conn = new PDO($dsn, $user, $pass);
-                            $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); // Enable exception mode for PDO
-
-                            // For events with a specific date, attempt to parse it. Use current date as fallback.
-                            $start_date = date("Y-m-d"); // Default fallback
-                            if ($date) {
-                                // Try to parse the date string (e.g., "Sep 5")
-                                $parsed_timestamp = strtotime($date);
-                                if ($parsed_timestamp !== false) {
-                                    $start_date = date("Y-m-d", $parsed_timestamp);
-                                }
-                                // If parsing fails, $start_date remains the fallback
-                            }
-
-                            // Use prepared statements to avoid SQL injection
-                            $sql = "INSERT INTO Events (EventName, EventDate, EventWhen, EventAddress, Link, EventImage) VALUES (:eventName, :eventDate, :eventWhen, :eventAddress, :link, :eventImage)";
-                            $stmt = $conn->prepare($sql);
-                            $stmt->bindParam(':eventName', $title, PDO::PARAM_STR);
-                            $stmt->bindParam(':eventDate', $start_date, PDO::PARAM_STR);
-                            $stmt->bindParam(':eventWhen', $full_date_str, PDO::PARAM_STR);
-                            $stmt->bindParam(':eventAddress', $address, PDO::PARAM_STR);
-                            $stmt->bindParam(':link', $filename, PDO::PARAM_STR);
-                            $stmt->bindParam(':eventImage', $image, PDO::PARAM_STR);
-
-                            $stmt->execute();
+                            // Database insertion is skipped as there's no file link to store
+                            // require_once '../config/database_local.php';
+                            // $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME;
+                            // $user = DB_USER;
+                            // $pass = DB_PASS;
+                            // $conn = new PDO($dsn, $user, $pass);
+                            // $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                            // $start_date = date("Y-m-d");
+                            // if ($date) {
+                            //     $parsed_timestamp = strtotime($date);
+                            //     if ($parsed_timestamp !== false) {
+                            //         $start_date = date("Y-m-d", $parsed_timestamp);
+                            //     }
+                            // }
+                            // $sql = "INSERT INTO Events (EventName, EventDate, EventWhen, EventAddress, Link, EventImage) VALUES (:eventName, :eventDate, :eventWhen, :eventAddress, :link, :eventImage)";
+                            // $stmt = $conn->prepare($sql);
+                            // $stmt->bindParam(':eventName', $title, PDO::PARAM_STR);
+                            // $stmt->bindParam(':eventDate', $start_date, PDO::PARAM_STR);
+                            // $stmt->bindParam(':eventWhen', $full_date_str, PDO::PARAM_STR);
+                            // $stmt->bindParam(':eventAddress', $address, PDO::PARAM_STR);
+                            // $stmt->bindParam(':link', $filename, PDO::PARAM_STR); // This $filename was problematic
+                            // $stmt->bindParam(':eventImage', $image, PDO::PARAM_STR);
+                            // $stmt->execute();
                         }
                     }
                 }

@@ -181,7 +181,7 @@
                         $date = $event['EventWhen']; // Use EventWhen for display
                         $address = $event['EventAddress'];
                         $image = $event['EventImage'];
-                        $filename = $event['Link']; // Use the Link from the DB
+                        // $filename = $event['Link']; // No longer used for linking
 
                         // Determine category based on the event title (similar to existing logic)
                         $eventsString = $title . ' ' . $address . ' ' . $date;
@@ -207,10 +207,10 @@
                             <div class='trending-carousel-slide'>
                                 <div class='home-trending-event'>
                                     <div class='home-trending-event-container'>
-                                        <a href='$filename'><img src='$image' alt='$title'></a>
-                                        <h3 id='title'><a href='$filename' id='event-link'>$title</a></h3>
+                                        <div><img src='$image' alt='$title'></div> <!-- Changed from <a> to <div> -->
+                                        <h3 id='title'><div id='event-link'>$title</div></h3> <!-- Changed from <a> to <div> -->
                                         <p id='description'><strong>Date:</strong> $date<br><strong>Address:</strong> $address</p>
-                                        <button onclick='copyEventLink(\"$filename\"); changeButtonText(this)' class='trending-share-event-btn' style='cursor: pointer;'>Share</button>
+                                        <!-- Share button removed as there's no specific link to share -->
                                         <div class='trending-event-tag-container'>
                                             <p>$category</p>
                                         </div>
