@@ -1,8 +1,8 @@
 <?php
     ob_start();
-    $userHobbies = $_SESSION['hobbies'];
-    $userLocation = $_SESSION['location'];
-    $key = "c30be58e6984eafadc346b28a3422bd9638cbc88c9783243ad3b7310f81590e1";
+    $userHobbies = $_SESSION['hobbies'] ?? '';
+    $userLocation = $_SESSION['location'] ?? '';
+    $key = getenv('SERP_API_KEY') ?: ''; // Use environment variable, fallback to empty string
 
     $directory = '../pages/';
 
@@ -65,10 +65,15 @@
         }
     } 
     
-    $api_url_interests = 'https://serpapi.com/search.json?engine=google_events&q=australia%20'.$userHobbies.'&hl=en&api_key='.$key;
-    $response = file_get_contents($api_url_interests);
-    $interestsData = json_decode($response, true);
-    $interestsEvents = $interestsData['events_results'] ?? [];
+    $interestsEvents = []; // Initialize as empty array
+    if (!empty($key)) { // Only proceed if the API key is set
+        $api_url_interests = 'https://serpapi.com/search.json?engine=google_events&q=australia%20'.$userHobbies.'&hl=en&api_key='.$key;
+        $response = @file_get_contents($api_url_interests); // Suppress warnings with @
+        if ($response !== false) {
+            $interestsData = json_decode($response, true);
+            $interestsEvents = $interestsData['events_results'] ?? [];
+        }
+    }
 ?>
 <!DOCTYPE html>
     <html lang="en">
@@ -302,10 +307,17 @@
             <h3 style="font-size: var(--h3-size);">BASED ON YOUR RECENT EVENTS</h3>
             <div class="home-listed-events-container">
                 <?php
-                    $api_url_recents = 'https://serpapi.com/search.json?engine=google_events&q=australia%20'.$userLocation.'&hl=en&api_key='.$key;
-                    $response = file_get_contents($api_url_interests);
-                    $recentEventsData = json_decode($response, true);
-                    $recentEvents = $recentEventsData['events_results'] ?? []; 
+                    // --- BEGIN NEW LOGIC FOR TRENDING NEAR YOU ---
+                    $weekendEvents = []; // Initialize as empty array
+                    if (!empty($key)) { // Only proceed if the API key is set
+                        $api_url_recents = 'https://serpapi.com/search.json?engine=google_events&q=australia%20'.$userLocation.'&hl=en&api_key='.$key;
+                        $response_recents = @file_get_contents($api_url_recents); // Suppress warnings with @
+                        if ($response_recents !== false) {
+                            $recentsData = json_decode($response_recents, true);
+                            $weekendEvents = $recentsData['events_results'] ?? [];
+                        }
+                    }
+                    // --- END NEW LOGIC FOR TRENDING NEAR YOU ---
 
                     error_reporting(E_ALL ^ E_NOTICE);
                     if (!empty($recentEvents)) {

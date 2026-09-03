@@ -1,108 +1,36 @@
 <?php
     ob_start();
-    $userHobbies = $_SESSION['hobbies'];
-    $userLocation = $_SESSION['location'];
-    $key = "c30be58e6984eafadc346b28a3422bd9638cbc88c9783243ad3b7310f81590e1";
+    $userHobbies = $_SESSION['hobbies'] ?? '';
+    $userLocation = $_SESSION['location'] ?? '';
+    $key = getenv('SERP_API_KEY') ?: ''; // Use environment variable, fallback to empty string
 
     $directory = '../pages/';
 
     $templatePath = '../eventDetails/details.php';
 
     $pageContent = file_get_contents($templatePath);
+    $pageContent = str_replace('src="../', 'src="../../', $pageContent);
+    $pageContent = str_replace('href="../', 'href="../../', $pageContent);
 
-    if (!empty($events)) {
-        foreach ($events as $index => $event) {
-            $title = is_array($event['title']) ? implode(', ', $event['title']) : ($event['title']);
-            $date = is_array($event['date']['when']) ? implode(', ', $event['date']['when']) : ($event['date']['when']);
-            $address = is_array($event['address']) ? implode(', ', $event['address']) : ($event['address']);
-            if (isset($event['description'])) {
-                $description = is_array($event['description']) ? implode(', ', $event['description']) : ($event['description']);
-            }
-            else {
-                $description = '';
-            }
-            $image = $event['thumbnail'];
-            $start_date = is_array($event['date']['start_date']) ? implode(', ', $event['date']['start_date']) : ($event['date']['start_date']);
-
-            $file = preg_replace('/[^a-zA-Z0-9]/', '', $title . '_' . $date);
-
-            $filename = $directory . $file . '.php';
-
-            $pageContent = '
-            <?php
-                $eventTitle = "' . addslashes($title) . '";
-                $eventDate = "' . addslashes($date) . '"; 
-                $eventAddress = "' . addslashes($address) . '";
-                $eventImage = "' . $image . '";
-                $description = "' .addslashes($description) . '";
-                $link ="' .addslashes($filename) . '";
-            ?>
-            ' . file_get_contents($templatePath);
-
-            file_put_contents($filename, $pageContent);
-            // Load local database configuration
-            require_once '../config/database_local.php';
-
-            // Database connection using local config
-            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME;
-            $user = DB_USER;
-            $pass = DB_PASS;
-            $conn = new PDO($dsn, $user, $pass);
-            $currentPageUrl = 'http://'.$_SERVER["HTTP_HOST"].$_SERVER["REQUEST_URI"];
-            $values = parse_url($currentPageUrl);
-            $start_date = strtotime($start_date);
-            $start_date = date("Y-m-d", $start_date);
-            $current = date("Y-m-d");
-
-            if ($current > $start_date) {
-                $start_date = date("Y-m-d", strtotime("+1 year", strtotime($start_date)));
-            }
-
-            
-            $sql = "INSERT INTO Events (EventName, EventDate, EventWhen, EventAddress, Link, EventImage)
-                    VALUES ('$title', '$start_date', '$date', '$address', '$filename', '$image');";
-            $result = $conn->query($sql);
-        }
-    } 
-    
-    $api_url_location = 'https://serpapi.com/search.json?engine=google_events&q=australia%20'.$userLocation.'&hl=en&api_key='.$key;
-    $response = file_get_contents($api_url_location);
-    $locationData = json_decode($response, true);
-    $locationEvents = $locationData['events_results'] ?? [];
-
-
-    // --- BEGIN NEW LOGIC FOR EVENTS THIS WEEKEND ---
-    // Calculate the upcoming weekend (Saturday and Sunday)
-    $today = new DateTime();
-    $daysUntilSat = 6 - $today->format('w'); // w is 0 for Sunday, 1 for Monday, ..., 6 for Saturday
-    if ($daysUntilSat <= 0) {
-        $daysUntilSat += 7; // If today is Sat/Sun, get next weekend
-    }
-    $weekendDateStart = clone $today;
-    $weekendDateStart->modify("+$daysUntilSat days");
-    $weekendDateEnd = clone $weekendDateStart;
-    $weekendDateEnd->modify('+1 day'); // Sunday
-
-    $weekendStartStr = $weekendDateStart->format('Y-m-d');
-    $weekendEndStr = $weekendDateEnd->format('Y-m-d');
-
-    // Load local database configuration
-    require_once '../config/database_local.php';
-
-    // Database connection using local config
-    $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME;
-    $user = DB_USER;
-    $pass = DB_PASS;
+    // --- NEW LOGIC FOR EVENTS THIS WEEKEND ---
     try {
-        $conn_weekend = new PDO($dsn, $user, $pass);
-        $conn_weekend->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        // Load local database configuration
+        require_once '../config/database_local.php';
 
-        // Prepare and execute the query to get events for the weekend
-        $stmt = $conn_weekend->prepare("
-            SELECT EventName, EventDate, EventWhen, EventAddress, Link, EventImage
-            FROM Events
-            WHERE EventDate BETWEEN :start_date AND :end_date
-            ORDER BY EventDate ASC
+        // Database connection using local config
+        $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME;
+        $user = DB_USER;
+        $pass = DB_PASS;
+        $conn = new PDO($dsn, $user, $pass);
+        $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        $stmt = $conn->prepare("
+            SELECT e.*, p.PriceValue AS Price
+            FROM Events e
+            JOIN Prices p ON e.EventID = p.EventID
+            WHERE e.StartDate BETWEEN :start_date AND :end_date
+            AND p.PriceValue <= 0
+            ORDER BY e.StartDate ASC
             LIMIT 3
         ");
         $stmt->bindParam(':start_date', $weekendStartStr, PDO::PARAM_STR);
@@ -271,15 +199,49 @@
             <h3 style="font-size: var(--h3-size);">FREE EVENTS IN AUSTRALIA</h3>
             <div class="home-listed-events-container">
             <?php
-                    $dsn = 'mysql:host=talsprddb02.int.its.rmit.edu.au;dbname=COSC3046_2402_UGRD_1479_G12';
-                    $user = 'COSC3046_2402_UGRD_1479_G12';
-                    $pass = 'LtEXbUiTF7Fm';
-                    $conn = new PDO($dsn, $user, $pass);
-                    $api_url = 'https://serpapi.com/search.json?engine=google_events&q=australia%20&hl=en&api_key='.$key;
-                    $response = file_get_contents($api_url);
-                    $data = json_decode($response, true);
-                    $events = $data['events_results'] ?? [];
+                    // Load local database configuration for this section
+                    require_once '../config/database_local.php';
+                    $dsn_free = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME;
+                    $user_free = DB_USER;
+                    $pass_free = DB_PASS;
+                    $conn_free = new PDO($dsn_free, $user_free, $pass_free);
+                    $conn_free->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+                    $freeEvents = []; // Initialize as empty array
+                    $events = []; // Initialize $events as an empty array here
+                    if (!empty($key)) { // Only proceed if the API key is set
+                        $api_url = 'https://serpapi.com/search.json?engine=google_events&q=australia%20&hl=en&api_key='.$key;
+                        $response = @file_get_contents($api_url); // Suppress warnings with @
+                        if ($response !== false) {
+                            $data = json_decode($response, true);
+                            $events = $data['events_results'] ?? [];
+                        }
+                    }
+                    foreach ($events as $event) {
+                        $title = $event['title'] ?? 'N/A';
+                        $date = $event['date'] ?? 'N/A';
+                        $address = $event['address'] ?? 'N/A';
+                        $description = $event['description'] ?? 'N/A';
+                        $price = $event['price'] ?? 'Free';
+                        $link = $event['link'] ?? '#';
+
+                        // Prepare statement to check if event title already exists
+                        $stmt_check = $conn_free->prepare("SELECT COUNT(*) FROM Events WHERE Title = :title");
+                        $stmt_check->bindParam(':title', $title, PDO::PARAM_STR);
+                        $stmt_check->execute();
+                        $count = $stmt_check->fetchColumn();
+
+                        // If event title doesn't exist, insert it
+                        if ($count == 0) {
+                            $stmt_insert = $conn_free->prepare("INSERT INTO Events (Title, Description, StartDate, EndDate, Address, Link) VALUES (:title, :description, :date, :date, :address, :link)");
+                            $stmt_insert->bindParam(':title', $title, PDO::PARAM_STR);
+                            $stmt_insert->bindParam(':description', $description, PDO::PARAM_STR);
+                            $stmt_insert->bindParam(':date', $date, PDO::PARAM_STR);
+                            $stmt_insert->bindParam(':address', $address, PDO::PARAM_STR);
+                            $stmt_insert->bindParam(':link', $link, PDO::PARAM_STR);
+                            $stmt_insert->execute();
+                        }
+                    }
                     error_reporting(E_ALL ^ E_NOTICE);
                     if (!empty($events)) {
                         foreach ($events as $index => $event) {

@@ -1,4 +1,4 @@
-const eventsData =[{"UserID":"1","EventName":"Sydney Oceanic Art Fair 2024","EventDate":"2024-10-27 00:00:00","EventAddress":"Art Leven, 17 Thurlow St, Redfern NSW, Australia","EventWhen":"Sat, Oct 26, 5:00 PM \u2013 Sun, Oct 27, 4:30 PM GMT+11","EventImage":"https:\/\/encrypted-tbn0.gstatic.com\/images?q=tbn:ANd9GcT_dYCfiXk0PSrFt3mKQiyOdmfniGrg-0efOYORukknM2udTBslZpNG8U8&s","Link":"..\/pages\/SydneyOceanicArtFair2024Oct27.php"},{"UserID":"1","EventName":"Spirit of the Landscape Art Exhibition","EventDate":"2024-10-27 00:00:00","EventAddress":"Mandurah Performing Arts Centre, 9 Ormsby Terrace, Mandurah WA, Australia","EventWhen":"Sep 30, 2:30 PM \u2013 Oct 29, 5:00 PM GMT+8","EventImage":"https:\/\/encrypted-tbn0.gstatic.com\/images?q=tbn:ANd9GcQt3fM2InuGyWt9PNbtD5QzzA3186FbFRIszk63tv2ihnuMQ3GkOk4O3PI&s","Link":"..\/pages\/SpiritoftheLandscapeArtExhibitionOct27.php"}];
+const eventsData =[];
 // function scrollToLayer(layerIndex) {
 //     if (layerIndex >= 0 && layerIndex < layers.length) {
 //         layers[layerIndex].scrollIntoView({ behavior: 'smooth' });

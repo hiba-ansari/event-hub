@@ -1,7 +1,9 @@
 <?php
 // Local database configuration
-define('DB_HOST', 'localhost');
+// NOTE: use 127.0.0.1 (TCP), NOT 'localhost' — PHP treats 'localhost' as a
+// Unix socket, which does not exist for a Docker-published MySQL port.
+define('DB_HOST', '127.0.0.1');
 define('DB_NAME', 'local_event_hub');
-define('DB_USER', 'root'); // Default for XAMPP/MAMP
-define('DB_PASS', ''); // Often empty for default installations
+define('DB_USER', 'root');
+define('DB_PASS', 'pass'); // matches MYSQL_ROOT_PASSWORD in docker-compose.yml
 ?>
