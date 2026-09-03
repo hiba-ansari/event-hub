@@ -22,12 +22,6 @@ $error_message = '';
 $success_message = '';
 $is_login_successful = false;
 
-// Generate a random CAPTCHA code if not set
-if (empty($_SESSION['captcha_code'])) {
-    $_SESSION['captcha_code'] = substr(str_shuffle("0123456789abcdefghijklmnopqrstuvwxyz"), 0, 6);
-}
-$captcha_code = $_SESSION['captcha_code'];
-
 // Logout handling
 if (isset($_POST['logout'])) {
     session_unset();
@@ -36,11 +30,10 @@ if (isset($_POST['logout'])) {
     exit();
 }
 
-// Login handling with CAPTCHA verification and lockout check
+// Login handling with lockout check
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login'])) {
     $email = trim($_POST['email']);
     $password = $_POST['password'];
-    $input_captcha = trim(strtolower($_POST['captcha'])); // Convert input to lowercase and trim
 
     // Check if the account exists and retrieve lockout status
     $stmt = $conn->prepare("SELECT failed_attempts, lockout_time, isLocked FROM Accounts WHERE Email = :email");
@@ -55,10 +48,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login'])) {
         } elseif ($user['lockout_time'] && new DateTime() < new DateTime($user['lockout_time'])) {
             // Check lockout time
             $error_message = "Account locked due to multiple failed login attempts. Please try again after an hour.";
-        } elseif ($input_captcha !== strtolower($_SESSION['captcha_code'])) {
-            // CAPTCHA verification
-            $error_message = "Invalid CAPTCHA. Please try again.";
-            $_SESSION['captcha_code'] = substr(str_shuffle("0123456789abcdefghijklmnopqrstuvwxyz"), 0, 6);
         } else {
             // Process login attempt
             $stmt = $conn->prepare("SELECT * FROM Accounts WHERE Email = :email");
@@ -78,7 +67,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login'])) {
                     $_SESSION['email'] = $user['Email'];
                     $_SESSION['isAdmin'] = $user['IsAdmin'];
                     $_SESSION['userID'] = $user['UserID'];
-                    unset($_SESSION['captcha_code']);
                     $success_message = "Login successful!";
                     $is_login_successful = true;
                 }
@@ -104,7 +92,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login'])) {
 
                     $error_message = "Invalid email or password. Attempt $failed_attempts of 3.";
                 }
-                $_SESSION['captcha_code'] = substr(str_shuffle("0123456789abcdefghijklmnopqrstuvwxyz"), 0, 6);
             }
         }
     } else {
@@ -205,9 +192,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['archive_account']) && 
 
             <label for="password">Password:</label>
             <input type="password" id="password" name="password" required>
-
-            <label for="captcha">CAPTCHA: <?php echo $_SESSION['captcha_code']; ?></label>
-            <input type="text" id="captcha" name="captcha" required placeholder="Enter CAPTCHA">
 
             <button type="submit" name="login">Login</button>
         </form>

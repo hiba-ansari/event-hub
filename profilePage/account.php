@@ -19,12 +19,6 @@ try {
 $error_message = '';
 $success_message = '';
 
-// Generate a random CAPTCHA code if not already set
-if (!isset($_SESSION['captcha_code'])) {
-    $_SESSION['captcha_code'] = substr(str_shuffle("0123456789abcdefghijklmnopqrstuvwxyz"), 0, 6);
-}
-$captcha_code = $_SESSION['captcha_code'];
-
 // Handle form submission
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = trim($_POST['username']);
@@ -36,12 +30,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $isAdmin = isset($_POST['isAdmin']) ? 1 : 0;
     $adminPassword = isset($_POST['admin_password']) ? $_POST['admin_password'] : '';
     $theme = isset($_POST['theme']) ? $_POST['theme'] : 'none';
-    $captcha_response = $_POST['captcha_code'];
 
-    // Check CAPTCHA
-    if ($captcha_response !== $_SESSION['captcha_code']) {
-        $error_message = "Incorrect CAPTCHA code. Please try again.";
-    } elseif (empty($username) || empty($email) || empty($password)) {
+    // Validate required fields
+    if (empty($username) || empty($email) || empty($password)) {
         $error_message = "Please fill in all required fields.";
     } elseif ($isAdmin && $adminPassword !== 'rmit123') {
         $error_message = "Invalid admin password. Please enter the correct password to create an admin account.";
@@ -105,7 +96,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 if ($stmt->execute()) {
                     $success_message = "Account created successfully!";
-                    unset($_SESSION['captcha_code']); // Clear CAPTCHA after successful registration
                 } else {
                     $error_message = "There was an error creating your account. Please try again.";
                 }
@@ -200,14 +190,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             
             <input type="radio" id="none" name="theme" value="none" <?php if(!isset($theme) || $theme == 'none') echo 'checked'; ?>>
             <label for="none">None</label>
-
-            <!-- CAPTCHA -->
-            <div class="captcha-container">
-                <p>Please enter the code below:</p>
-                <p><strong><?php echo htmlspecialchars($captcha_code); ?></strong></p>
-                <label for="captcha_code">Enter CAPTCHA code:</label>
-                <input type="text" id="captcha_code" name="captcha_code" required>
-            </div>
 
             <button type="submit">Register</button>
         </form>
