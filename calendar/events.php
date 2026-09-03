@@ -8,31 +8,31 @@
     $user = DB_USER;
     $pass = DB_PASS;
     $conn = new PDO($dsn, $user, $pass);
-    $userID = $_SESSION['userID'];
-    $sql = "SELECT UserID, EventName, EventDate, EventAddress, EventWhen, EventImage, Link FROM SavedEvents NATURAL JOIN Events WHERE UserID = $userID";
-    $result = $conn->query($sql);
-    $savedEvents = $result->fetchAll(PDO::FETCH_ASSOC);
-?>
-<?php
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+    // Fetch the events saved to this user's calendar (empty when logged out)
+    $savedEvents = [];
+    if (!empty($_SESSION['userID'])) {
+        $stmt = $conn->prepare("
+            SELECT Events.EventID, EventName, EventDate, EventAddress, EventWhen, EventImage, Link
+            FROM SavedEvents
+            JOIN Events ON SavedEvents.EventID = Events.EventID
+            WHERE SavedEvents.UserID = :uid
+        ");
+        $stmt->execute([':uid' => $_SESSION['userID']]);
+        $savedEvents = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     $currentPageUrl = 'http://'.$_SERVER["HTTP_HOST"].$_SERVER["REQUEST_URI"];
     $values = parse_url($currentPageUrl);
-   
-    if (!empty($_SESSION['userID'])){
-        $userID = $_SESSION['userID'];
-        $sql = "SELECT UserID, EventName, EventDate, EventAddress, EventWhen, EventImage, Link FROM SavedEvents NATURAL JOIN Events WHERE UserID = $userID";
-        $result = $conn->query($sql);
-        $rows = $result->fetchAll(PDO::FETCH_ASSOC);
-        $json = json_encode($rows);
-        $eventData = 'const eventsData =' . $json . ';';
-    }
-    else {
-        $eventData = 'const eventsData = []';
-    }
+
+    $json = json_encode($savedEvents);
+    $eventData = 'const eventsData =' . $json . ';';
 
     $currentjs = file_get_contents('calendarthingy.js');
     $newjs = $eventData . $currentjs;
     file_put_contents('calendar.js', $newjs);
-    
+
 ?>
 
 
@@ -100,7 +100,7 @@
         </div>
     </div>
     
-    <script src="calendar.js"></script>
+    <script src="calendar.js?v=<?php echo time(); ?>"></script>
     
 </body>
 <footer class="footer">

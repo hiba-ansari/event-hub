@@ -309,7 +309,7 @@
             <h3 style="font-size: var(--h3-size);">Please Log In or Create an Account to Continue</h3>
         </div>
     </div>
-    <script src="homepage-script.js"></script>
+    <script src="homepage-script.js?v=<?php echo filemtime('homepage-script.js'); ?>"></script>
     </body>
     
     <footer class="footer">

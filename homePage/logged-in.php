@@ -10,61 +10,93 @@
 
     $pageContent = file_get_contents($templatePath);
 
-    if (!empty($events)) {
-        foreach ($events as $index => $event) {
-            $title = is_array($event['title']) ? implode(', ', $event['title']) : ($event['title']);
-            $date = is_array($event['date']['when']) ? implode(', ', $event['date']['when']) : ($event['date']['when']);
-            $address = is_array($event['address']) ? implode(', ', $event['address']) : ($event['address']);
-            if (isset($event['description'])) {
-                $description = is_array($event['description']) ? implode(', ', $event['description']) : ($event['description']);
-            }
-            else {
-                $description = '';
-            }
-            $image = $event['thumbnail'];
-            $start_date = is_array($event['date']['start_date']) ? implode(', ', $event['date']['start_date']) : ($event['date']['start_date']);
+    // Load local database configuration
+    require_once '../config/database_local.php';
 
-            $file = preg_replace('/[^a-zA-Z0-9]/', '', $title . '_' . $date);
+    // Shared connection for persisting API events on this page
+    $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME;
+    $conn = new PDO($dsn, DB_USER, DB_PASS);
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-            $filename = $directory . $file . '.php';
+    // Events the current user has already saved (for rendering + button state)
+    $savedIds = [];
+    if (!empty($_SESSION['userID'])) {
+        $savedStmt = $conn->prepare("SELECT EventID FROM SavedEvents WHERE UserID = :uid");
+        $savedStmt->execute([':uid' => $_SESSION['userID']]);
+        $savedIds = $savedStmt->fetchAll(PDO::FETCH_COLUMN);
+    }
 
-            $pageContent = '
-            <?php
-                $eventTitle = "' . addslashes($title) . '";
-                $eventDate = "' . addslashes($date) . '"; 
-                $eventAddress = "' . addslashes($address) . '";
-                $eventImage = "' . $image . '";
-                $description = "' .addslashes($description) . '";
-                $link ="' .addslashes($filename) . '";
-            ?>
-            ' . file_get_contents($templatePath);
-
-            file_put_contents($filename, $pageContent);
-            // Load local database configuration
-            require_once '../config/database_local.php';
-
-            // Database connection using local config
-            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME;
-            $user = DB_USER;
-            $pass = DB_PASS;
-            $conn = new PDO($dsn, $user, $pass);
-            $currentPageUrl = 'http://'.$_SERVER["HTTP_HOST"].$_SERVER["REQUEST_URI"];
-            $values = parse_url($currentPageUrl);
-            $start_date = strtotime($start_date);
-            $start_date = date("Y-m-d", $start_date);
-            $current = date("Y-m-d");
-
-            if ($current > $start_date) {
-                $start_date = date("Y-m-d", strtotime("+1 year", strtotime($start_date)));
-            }
-
-            
-            $sql = "INSERT INTO Events (EventName, EventDate, EventWhen, EventAddress, Link, EventImage)
-                    VALUES ('$title', '$start_date', '$date', '$address', '$filename', '$image');";
-            $result = $conn->query($sql);
+    /**
+     * Persist a SERP API event into the Events table and generate its
+     * details page under ../pages/. Deduplicates on Events.Link.
+     * Returns ['id' => EventID|null, 'filename' => generated page path].
+     */
+    function persistApiEvent($conn, array $event, string $directory, string $templatePath): ?array
+    {
+        $title = is_array($event['title'] ?? '') ? implode(', ', $event['title']) : ($event['title'] ?? '');
+        $when = is_array($event['date']['when'] ?? '') ? implode(', ', $event['date']['when']) : ($event['date']['when'] ?? '');
+        $address = is_array($event['address'] ?? '') ? implode(', ', $event['address']) : ($event['address'] ?? '');
+        $description = $event['description'] ?? '';
+        if (is_array($description)) {
+            $description = implode(', ', $description);
         }
-    } 
-    
+        $image = $event['thumbnail'] ?? '';
+        if (is_array($image)) {
+            $image = implode(', ', $image);
+        }
+        $start_date = is_array($event['date']['start_date'] ?? '') ? implode(', ', $event['date']['start_date']) : ($event['date']['start_date'] ?? '');
+
+        if ($title === '') {
+            return null;
+        }
+
+        $file = preg_replace('/[^a-zA-Z0-9]/', '', $title . '_' . $when);
+        $filename = $directory . $file . '.php';
+
+        // Generate this event's details page from the template
+        $generated = '
+        <?php
+            $eventTitle = "' . addslashes($title) . '";
+            $eventDate = "' . addslashes($when) . '"; 
+            $eventAddress = "' . addslashes($address) . '";
+            $eventImage = "' . addslashes($image) . '";
+            $description = "' . addslashes($description) . '";
+            $link ="' . addslashes($filename) . '";
+        ?>
+        ' . file_get_contents($templatePath);
+
+        if (!is_dir($directory)) {
+            @mkdir($directory, 0777, true);
+        }
+        file_put_contents($filename, $generated);
+
+        // Normalise the start date; push past events forward a year so they stay visible
+        $ts = strtotime($start_date);
+        $start_date = $ts ? date('Y-m-d', $ts) : date('Y-m-d');
+        if (date('Y-m-d') > $start_date) {
+            $start_date = date('Y-m-d', strtotime('+1 year', strtotime($start_date)));
+        }
+
+        $stmt = $conn->prepare("INSERT INTO Events (EventName, EventDate, EventWhen, EventAddress, Link, EventImage)
+                                VALUES (:name, :date, :when, :address, :link, :image)
+                                ON DUPLICATE KEY UPDATE EventDate = VALUES(EventDate), EventWhen = VALUES(EventWhen),
+                                    EventAddress = VALUES(EventAddress), EventImage = VALUES(EventImage)");
+        $stmt->execute([
+            ':name' => $title,
+            ':date' => $start_date,
+            ':when' => $when,
+            ':address' => $address,
+            ':link' => $filename,
+            ':image' => $image,
+        ]);
+
+        $idStmt = $conn->prepare("SELECT EventID FROM Events WHERE Link = :link");
+        $idStmt->execute([':link' => $filename]);
+        $id = $idStmt->fetchColumn();
+
+        return ['id' => $id ? (int)$id : null, 'filename' => $filename];
+    }
+
     $interestsEvents = []; // Initialize as empty array
     if (!empty($key)) { // Only proceed if the API key is set
         $api_url_interests = 'https://serpapi.com/search.json?engine=google_events&q=australia%20'.$userHobbies.'&hl=en&api_key='.$key;
@@ -152,20 +184,12 @@
                 $weekendStartStr = $weekendDateStart->format('Y-m-d');
                 $weekendEndStr = $weekendDateEnd->format('Y-m-d');
 
-                // Load local database configuration
-                require_once '../config/database_local.php';
+                // Local DB config + $conn were loaded at the top of this page
 
-                // Database connection using local config
-                $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME;
-                $user = DB_USER;
-                $pass = DB_PASS;
                 try {
-                    $conn_weekend = new PDO($dsn, $user, $pass);
-                    $conn_weekend->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
                     // Prepare and execute the query to get events for the weekend
-                    $stmt = $conn_weekend->prepare("
-                        SELECT EventName, EventDate, EventWhen, EventAddress, Link, EventImage
+                    $stmt = $conn->prepare("
+                        SELECT EventID, EventName, EventDate, EventWhen, EventAddress, Link, EventImage
                         FROM Events
                         WHERE EventDate BETWEEN :start_date AND :end_date
                         ORDER BY EventDate ASC
@@ -189,11 +213,19 @@
                 if (!empty($weekendEvents)) {
                     foreach ($weekendEvents as $event) {
                         // Map database columns to the variables expected by the UI
+                        $eventId = $event['EventID'];
                         $title = $event['EventName'];
                         $date = $event['EventWhen']; // Use EventWhen for display
                         $address = $event['EventAddress'];
                         $image = $event['EventImage'];
                         // $filename = $event['Link']; // No longer used for linking
+
+                        // Whether this event is already in the user's calendar
+                        $isSaved = in_array($eventId, $savedIds);
+                        $saveLabel = $isSaved ? "&#10003;" : "+";
+                        $saveStyle = $isSaved
+                            ? "cursor: pointer; background-color:#0D99FF; color:white;"
+                            : "cursor: pointer;";
 
                         // Determine category based on the event title (similar to existing logic)
                         $eventsString = $title . ' ' . $address . ' ' . $date;
@@ -223,7 +255,7 @@
                                         <h3 id='trending-heading'><div id='event-link'>$title</div></h3> <!-- Changed from <a> to <div> -->
                                         <p id='description'><strong>Date:</strong> $date<br><strong>Address:</strong> $address</p>
                                         <!-- Share button removed as there's no specific link to share -->
-                                        <button onclick='saveEvent(this)' class='trending-save-event-btn' style='cursor: pointer;'>+</button> <!-- Save button might need adjustment if it relies on link -->
+                                        <button onclick='saveEvent(this)' class='trending-save-event-btn' data-event-id='$eventId' style='$saveStyle'>$saveLabel</button>
                                         <div class='trending-event-tag-container'>
                                             <p>$category</p>
                                         </div>
@@ -254,13 +286,18 @@
                             $date = is_array($event['date']['when']) ? implode(', ', $event['date']['when']) : ($event['date']['when']);
                             $address = is_array($event['address']) ? implode(', ', $event['address']) : ($event['address']);
                             $image = $event['thumbnail'];
-                            $start_date = is_array($event['date']['start_date']) ? implode(', ', $event['date']['start_date']) : ($event['date']['start_date']);
 
-                            $file = preg_replace('/[^a-zA-Z0-9]/', '', $title . '_' . $date);
+                            // Persist the event so it can be saved to a calendar
+                            $persisted = persistApiEvent($conn, $event, $directory, $templatePath);
+                            $filename = $persisted['filename'];
+                            $eventId = $persisted['id'];
 
-                            $filename = $directory . $file . '.php';
+                            $isSaved = $eventId && in_array($eventId, $savedIds);
+                            $saveLabel = $isSaved ? "&#10003;" : "+";
+                            $saveStyle = $isSaved
+                                ? "cursor: pointer; background-color:#0D99FF; color:white;"
+                                : "cursor: pointer;";
 
-                            
                             $eventsString = implode(', ', $event);
                             //echo "$eventsString";
                             //reformatting
@@ -288,7 +325,7 @@
                                         <h3 id='trending-heading'><a href='$filename' id='event-link'>$title</a></h3>
                                         <p id='description'><strong>Date:</strong> $date<br><strong>Address:</strong> $address</p>
                                         <button onclick='copyEventLink(\"$filename\"); changeButtonText(this)' class='share-event-btn' style='cursor: pointer;'>Share</button>
-                                        <button onclick='saveEvent(this)' class='save-event-btn' style='cursor: pointer;'>+</button>
+                                        <button onclick='saveEvent(this)' class='save-event-btn' data-event-id='$eventId' style='$saveStyle'>$saveLabel</button>
                                         <div class='search-event-tag-container'>
                                                 <p>$category</p>
                                         </div>
@@ -307,17 +344,17 @@
             <h3 style="font-size: var(--h3-size);">BASED ON YOUR RECENT EVENTS</h3>
             <div class="home-listed-events-container">
                 <?php
-                    // --- BEGIN NEW LOGIC FOR TRENDING NEAR YOU ---
-                    $weekendEvents = []; // Initialize as empty array
+                    // --- API fetch for "recent events" (based on user location) ---
+                    $recentEvents = []; // Initialize as empty array
                     if (!empty($key)) { // Only proceed if the API key is set
                         $api_url_recents = 'https://serpapi.com/search.json?engine=google_events&q=australia%20'.$userLocation.'&hl=en&api_key='.$key;
                         $response_recents = @file_get_contents($api_url_recents); // Suppress warnings with @
                         if ($response_recents !== false) {
                             $recentsData = json_decode($response_recents, true);
-                            $weekendEvents = $recentsData['events_results'] ?? [];
+                            $recentEvents = $recentsData['events_results'] ?? [];
                         }
                     }
-                    // --- END NEW LOGIC FOR TRENDING NEAR YOU ---
+                    // --- END recent events fetch ---
 
                     error_reporting(E_ALL ^ E_NOTICE);
                     if (!empty($recentEvents)) {
@@ -326,15 +363,19 @@
                             $date = is_array($event['date']['when']) ? implode(', ', $event['date']['when']) : ($event['date']['when']);
                             $address = is_array($event['address']) ? implode(', ', $event['address']) : ($event['address']);
                             $image = $event['thumbnail'];
-                            $start_date = is_array($event['date']['start_date']) ? implode(', ', $event['date']['start_date']) : ($event['date']['start_date']);
 
-                            $file = preg_replace('/[^a-zA-Z0-9]/', '', $title . '_' . $date);
+                            // Persist the event so it can be saved to a calendar
+                            $persisted = persistApiEvent($conn, $event, $directory, $templatePath);
+                            $filename = $persisted['filename'];
+                            $eventId = $persisted['id'];
 
-                            $filename = $directory . $file . '.php';
+                            $isSaved = $eventId && in_array($eventId, $savedIds);
+                            $saveLabel = $isSaved ? "&#10003;" : "+";
+                            $saveStyle = $isSaved
+                                ? "cursor: pointer; background-color:#0D99FF; color:white;"
+                                : "cursor: pointer;";
 
-                            
                             $eventsString = implode(', ', $event);
-                            //echo "$eventsString";
                             //reformatting
                             if (stripos($eventsString, 'gaming') || stripos($eventsString, 'game')) {
                                 $category = "🎮 GAMING";
@@ -360,7 +401,7 @@
                                         <h3 id='title'><a href='$filename' id='event-link'>$title</a></h3>
                                         <p id='description'><strong>Date:</strong> $date<br><strong>Address:</strong> $address</p>
                                         <button onclick='copyEventLink(\"$filename\"); changeButtonText(this)' class='share-event-btn' style='cursor: pointer;'>Share</button>
-                                        <button onclick='saveEvent(this)' class='save-event-btn' style='cursor: pointer;'>+</button>
+                                        <button onclick='saveEvent(this)' class='save-event-btn' data-event-id='$eventId' style='$saveStyle'>$saveLabel</button>
                                         <div class='search-event-tag-container'>
                                                 <p>$category</p>
                                         </div>
@@ -375,7 +416,7 @@
             </div>
         </div>
     </div>
-    <script src="homepage-script.js"></script>
+    <script src="homepage-script.js?v=<?php echo filemtime('homepage-script.js'); ?>"></script>
     </body>
     
     <footer class="footer">

@@ -1,4 +1,4 @@
-const eventsData =[];
+const eventsData =[{"EventID":2,"EventName":"Weekend Art Market","EventDate":"2026-09-05","EventAddress":"Southbank, Melbourne","EventWhen":"Sun 10:00 AM","EventImage":"images\/event2.jpg","Link":"https:\/\/example.com\/artmarket"},{"EventID":3,"EventName":"Tech Meetup","EventDate":"2026-09-06","EventAddress":"Melbourne Central","EventWhen":"Mon 6:30 PM","EventImage":"images\/event3.jpg","Link":"https:\/\/example.com\/meetup"}];
 // function scrollToLayer(layerIndex) {
 //     if (layerIndex >= 0 && layerIndex < layers.length) {
 //         layers[layerIndex].scrollIntoView({ behavior: 'smooth' });
@@ -22,6 +22,17 @@ const prevMonthButton = document.getElementById('prevMonth');
 const nextMonthButton = document.getElementById('nextMonth');
 
 let currentDate = new Date();
+
+// Parse a "YYYY-MM-DD" string as a LOCAL date.
+// Using new Date("YYYY-MM-DD") treats it as UTC midnight, which shifts the
+// calendar day by one for viewers in timezones west of UTC.
+function parseLocalDate(dateStr) {
+    const parts = String(dateStr).split('T')[0].split(' ')[0].split('-');
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    return new Date(year, month, day);
+}
 
 function renderCalendar() {
     daysContainer.innerHTML = '';
@@ -56,7 +67,7 @@ function renderCalendar() {
         }
 
         eventsData.forEach(events => {
-            const eventDate = new Date(events.EventDate);
+            const eventDate = parseLocalDate(events.EventDate);
 
             if (day === eventDate.getDate() && currentDate.getMonth() === eventDate.getMonth() && currentDate.getFullYear() === eventDate.getFullYear()) {
                 const event = document.createElement('li');
@@ -81,7 +92,7 @@ function renderCalendar() {
 function renderEvents() {
     eventsContainer.innerHTML = '';    
     eventsData.forEach(events => {
-        const eventDate = new Date(events.EventDate);
+        const eventDate = parseLocalDate(events.EventDate);
 
         if (currentDate.getMonth() === eventDate.getMonth() && currentDate.getFullYear() === eventDate.getFullYear()) {
             const eventContainer = document.createElement('div');
@@ -96,7 +107,7 @@ function renderEvents() {
             const eventTitle = document.createElement('h3');
             eventTitle.id = 'title';
             const titleLink = document.createElement('a');
-            titleLink.href = events.link;
+            titleLink.href = events.Link;
             titleLink.id = 'event-link';
             titleLink.innerText = events.EventName;
             eventTitle.appendChild(titleLink);

@@ -60,7 +60,8 @@ CREATE TABLE IF NOT EXISTS `Events` (
   `EndDate` date DEFAULT NULL,
   `Address` varchar(255) DEFAULT NULL,
   `Price` decimal(10,2) DEFAULT NULL,
-  PRIMARY KEY (`EventID`)
+  PRIMARY KEY (`EventID`),
+  UNIQUE KEY `Link` (`Link`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------------------------------------------------------------------
