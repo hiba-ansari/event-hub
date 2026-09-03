@@ -1,8 +1,12 @@
 <?php
     session_start();
-    $dsn = 'mysql:host=talsprddb02.int.its.rmit.edu.au;dbname=COSC3046_2402_UGRD_1479_G12';
-    $user = 'COSC3046_2402_UGRD_1479_G12';
-    $pass = 'LtEXbUiTF7Fm';
+    // Load local database configuration
+    require_once '../config/database_local.php';
+
+    // Database connection using local config
+    $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME;
+    $user = DB_USER;
+    $pass = DB_PASS;
     $conn = new PDO($dsn, $user, $pass);
     $sql = "Select EventID from Events where link = '$link'";
     $result = $conn->query($sql);
@@ -256,4 +260,3 @@
     </footer>
 </body>
 </html>
-

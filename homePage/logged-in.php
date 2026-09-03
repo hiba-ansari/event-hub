@@ -129,29 +129,71 @@
         <h3 style="font-size: var(--h3-size);">TRENDING NEAR YOU</h3>
         <div class="trending-carousel-container" style="margin-bottom: 12vmin; position: relative;">
             <?php
+                // --- BEGIN NEW LOGIC FOR TRENDING EVENTS (based on Weekend) ---
+                // Calculate the upcoming weekend (Saturday and Sunday)
+                $today = new DateTime();
+                $daysUntilSat = 6 - $today->format('w'); // w is 0 for Sunday, 1 for Monday, ..., 6 for Saturday
+                if ($daysUntilSat <= 0) {
+                    $daysUntilSat += 7; // If today is Sat/Sun, get next weekend
+                }
+                $weekendDateStart = clone $today;
+                $weekendDateStart->modify("+$daysUntilSat days");
+                $weekendDateEnd = clone $weekendDateStart;
+                $weekendDateEnd->modify('+1 day'); // Sunday
+
+                $weekendStartStr = $weekendDateStart->format('Y-m-d');
+                $weekendEndStr = $weekendDateEnd->format('Y-m-d');
+
+                // Load local database configuration
+                require_once '../config/database_local.php';
+
+                // Database connection using local config
+                $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME;
+                $user = DB_USER;
+                $pass = DB_PASS;
+                try {
+                    $conn_weekend = new PDO($dsn, $user, $pass);
+                    $conn_weekend->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+                    // Prepare and execute the query to get events for the weekend
+                    $stmt = $conn_weekend->prepare("
+                        SELECT EventName, EventDate, EventWhen, EventAddress, Link, EventImage
+                        FROM Events
+                        WHERE EventDate BETWEEN :start_date AND :end_date
+                        ORDER BY EventDate ASC
+                        LIMIT 3
+                    ");
+                    $stmt->bindParam(':start_date', $weekendStartStr, PDO::PARAM_STR);
+                    $stmt->bindParam(':end_date', $weekendEndStr, PDO::PARAM_STR);
+                    $stmt->execute();
+
+                    // Fetch the results
+                    $weekendEvents = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                } catch (PDOException $e) {
+                    error_log("Database error fetching weekend events: " . $e->getMessage());
+                    $weekendEvents = []; // Return empty array on error
+                }
+                // --- END NEW LOGIC FOR TRENDING EVENTS (based on Weekend) ---
+
+
                 error_reporting(E_ALL ^ E_NOTICE);
-                if (!empty($interestsEvents)) {
-                    for ($index = 0; $index < 3 && $index < count($interestsEvents); $index++) {
-                        $event = $interestsEvents[$index];
-                        $title = is_array($event['title']) ? implode(', ', $event['title']) : ($event['title']);
-                        $date = is_array($event['date']['when']) ? implode(', ', $event['date']['when']) : ($event['date']['when']);
-                        $address = is_array($event['address']) ? implode(', ', $event['address']) : ($event['address']);
-                        $image = $event['thumbnail'];
-                        $start_date = is_array($event['date']['start_date']) ? implode(', ', $event['date']['start_date']) : ($event['date']['start_date']);
+                // Use $weekendEvents instead of $interestsEvents
+                if (!empty($weekendEvents)) {
+                    foreach ($weekendEvents as $event) {
+                        // Map database columns to the variables expected by the UI
+                        $title = $event['EventName'];
+                        $date = $event['EventWhen']; // Use EventWhen for display
+                        $address = $event['EventAddress'];
+                        $image = $event['EventImage'];
+                        $filename = $event['Link']; // Use the Link from the DB
 
-                        $file = preg_replace('/[^a-zA-Z0-9]/', '', $title . '_' . $date);
-
-                        $filename = $directory . $file . '.php';
-
-                        
-                        $eventsString = implode(', ', $event);
-                        //echo "$eventsString";
-                        //reformatting
+                        // Determine category based on the event title (similar to existing logic)
+                        $eventsString = $title . ' ' . $address . ' ' . $date;
                         if (stripos($eventsString, 'gaming') || stripos($eventsString, 'game')) {
                             $category = "🎮 GAMING";
                         }
-                        else if (stripos($eventsString, 'art') || 
-                        stripos($eventsString, 'arts') || 
+                        else if (stripos($eventsString, 'art') ||
+                        stripos($eventsString, 'arts') ||
                         stripos($eventsString, 'gallery')) {
                             $category = "🎨 ART";
                         }
@@ -164,7 +206,7 @@
                         else {
                             $category = "";
                         }
-                        
+
                         echo "
                             <div class='trending-carousel-slide'>
                                 <div class='home-trending-event'>
@@ -181,7 +223,6 @@
                                 </div>
                             </div>
                         ";
-
                     }
                 } else {
                     echo "<p>No events found.</p>";
