@@ -2,6 +2,29 @@
     error_log("*************** Inside search.php (XAMPP htdocs version) - Using events_results - NO LINKS");
     session_start();
     require_once __DIR__ . '/../config/features.php';
+    require_once __DIR__ . '/../config/database_local.php';
+    require_once __DIR__ . '/../includes/persist-api-event.php';
+
+    // Shared connection so search results can be persisted + saved like the homepage.
+    // Kept optional: if the DB is unreachable the search page still renders (without saving).
+    $conn = null;
+    try {
+        $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME;
+        $conn = new PDO($dsn, DB_USER, DB_PASS);
+        $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    } catch (PDOException $e) {
+        error_log("search.php: DB connection failed - " . $e->getMessage());
+        $conn = null;
+    }
+
+    // Events the current user has already saved (for rendering the button state)
+    $savedIds = [];
+    if ($conn && !empty($_SESSION['userID'])) {
+        $savedStmt = $conn->prepare("SELECT EventID FROM SavedEvents WHERE UserID = :uid");
+        $savedStmt->execute([':uid' => $_SESSION['userID']]);
+        $savedIds = $savedStmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
     if (isset($_GET["query"])) {
         $key = "c30be58e6984eafadc346b28a3422bd9638cbc88c9783243ad3b7310f81590e1";
         $userQuery = $_GET["query"];
@@ -42,14 +65,29 @@
                 $description = $event['type'] ?? 'No description available.'; // Using 'type' as description
                 $image = $event['thumbnail'] ?? 'https://via.placeholder.com/150'; // Use thumbnail if available
 
-                // Store event data in array instead of generating files and inserting into database
+                // Persist the event (generate its details page + Events row) so logged-in
+                // users can click through and save it, same as the homepage. Uses the raw
+                // $event so both API date shapes are handled by the shared helper.
+                $eventId = null;
+                $eventLink = '';
+                if (!empty($_SESSION['userID']) && $conn) {
+                    $persisted = persistApiEvent($conn, $event, '../pages/', '../eventDetails/details.php');
+                    if ($persisted) {
+                        $eventId = $persisted['id'];
+                        $eventLink = $persisted['filename'];
+                    }
+                }
+
+                // Store event data for rendering (also persisted above for saving)
                 $event_data[] = [
                     'title' => $title,
                     'date' => $full_date_str,
                     'address' => $address,
                     'description' => $description,
                     'image' => $image,
-                    'original_index' => $index
+                    'original_index' => $index,
+                    'event_id' => $eventId,
+                    'link' => $eventLink
                 ];
             }
         }
@@ -169,13 +207,31 @@
                             }
                             else {
                                 if (isset($_SESSION['userID'])) {
-                                    // Note: Saving functionality is removed as it relied on database links
+                                    $eventId = $event_item['event_id'] ?? null;
+                                    $link = $event_item['link'] ?? '';
+                                    $isSaved = $eventId && in_array($eventId, $savedIds);
+                                    $saveLabel = $isSaved ? "&#10003;" : "+";
+                                    $saveStyle = $isSaved
+                                        ? "cursor: pointer; background-color:#0D99FF; color:white;"
+                                        : "cursor: pointer;";
+
+                                    // Clickable once the event has been persisted (same as homepage)
+                                    $imageBlock = $link
+                                        ? "<a href='$link'><img src='$image' alt='$title'></a>"
+                                        : "<div><img src='$image' alt='$title'></div>";
+                                    $titleBlock = $link
+                                        ? "<a href='$link' id='event-link'>$title</a>"
+                                        : "<div id='event-link'>$title</div>";
+                                    $saveButton = $eventId
+                                        ? "<button onclick='saveEvent(this)' class='save-event-btn' data-event-id='$eventId' style='$saveStyle'>$saveLabel</button>"
+                                        : '';
+
                                     echo "
                                     <div class='search-event-container'>
-                                        <div><img src='$image' alt='$title'></div>
-                                        <h3 id='title'><div id='event-link'>$title</div></h3>
+                                        $imageBlock
+                                        <h3 id='title'>$titleBlock</h3>
                                         <p id='description'><strong>Date:</strong> $date<br><strong>Address:</strong> $address</p>
-                                        <!-- Share button removed as there's no specific link to share -->
+                                        $saveButton
                                         <div class='search-event-tag-container'>
                                                 <p>$category</p>
                                         </div>
@@ -279,7 +335,7 @@
             ?>
         </div>
     </div>
-    <script src="../searchPage/search-script.js"></script>
+    <script src="../searchPage/search-script.js?v=<?php echo filemtime(__DIR__ . '/search-script.js'); ?>"></script>
 </body>
 <footer class="footer" style="z-index: 0; position: relative; bottom: 0;">
     <div class="footer-content">

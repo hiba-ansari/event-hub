@@ -16,17 +16,49 @@ function changeButtonText(button) {
     }
 }
 
-function saveEvent(button) {
-    if (button.innerHTML=="+") {
+function applySaveState(button, saved) {
+    if (saved) {
         button.innerHTML = "&#10003;";
         button.style.backgroundColor = "#0D99FF";
         button.style.color = "white";
-    }
-    else {
-        button.innerHTML = "+"
+    } else {
+        button.innerHTML = "+";
         button.style.backgroundColor = "var(--event-button-color)";
         button.style.color = "black";
     }
+}
+
+function saveEvent(button) {
+    const eventId = button.dataset.eventId;
+
+    // No event id means the event isn't persisted (or the user is logged out)
+    if (!eventId) {
+        alert("Please log in to save events to your calendar.");
+        return;
+    }
+
+    button.disabled = true;
+
+    fetch("../calendar/save-event.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "event_id=" + encodeURIComponent(eventId)
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            button.disabled = false;
+            if (data.ok) {
+                applySaveState(button, data.saved);
+            } else if (data.error === "not_logged_in") {
+                alert("Please log in to save events to your calendar.");
+            } else {
+                alert("Sorry, something went wrong while saving this event.");
+            }
+        })
+        .catch(() => {
+            button.disabled = false;
+            alert("Sorry, something went wrong while saving this event.");
+        });
 }
 
 let page = 1;

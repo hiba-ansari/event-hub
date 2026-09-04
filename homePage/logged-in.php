@@ -13,6 +13,7 @@
     // Load local database configuration
     require_once '../config/database_local.php';
     require_once __DIR__ . '/../config/features.php';
+    require_once __DIR__ . '/../includes/persist-api-event.php';
 
     // Shared connection for persisting API events on this page
     $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME;
@@ -27,76 +28,7 @@
         $savedIds = $savedStmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
-    /**
-     * Persist a SERP API event into the Events table and generate its
-     * details page under ../pages/. Deduplicates on Events.Link.
-     * Returns ['id' => EventID|null, 'filename' => generated page path].
-     */
-    function persistApiEvent($conn, array $event, string $directory, string $templatePath): ?array
-    {
-        $title = is_array($event['title'] ?? '') ? implode(', ', $event['title']) : ($event['title'] ?? '');
-        $when = is_array($event['date']['when'] ?? '') ? implode(', ', $event['date']['when']) : ($event['date']['when'] ?? '');
-        $address = is_array($event['address'] ?? '') ? implode(', ', $event['address']) : ($event['address'] ?? '');
-        $description = $event['description'] ?? '';
-        if (is_array($description)) {
-            $description = implode(', ', $description);
-        }
-        $image = $event['thumbnail'] ?? '';
-        if (is_array($image)) {
-            $image = implode(', ', $image);
-        }
-        $start_date = is_array($event['date']['start_date'] ?? '') ? implode(', ', $event['date']['start_date']) : ($event['date']['start_date'] ?? '');
-
-        if ($title === '') {
-            return null;
-        }
-
-        $file = preg_replace('/[^a-zA-Z0-9]/', '', $title . '_' . $when);
-        $filename = $directory . $file . '.php';
-
-        // Generate this event's details page from the template
-        $generated = '
-        <?php
-            $eventTitle = "' . addslashes($title) . '";
-            $eventDate = "' . addslashes($when) . '"; 
-            $eventAddress = "' . addslashes($address) . '";
-            $eventImage = "' . addslashes($image) . '";
-            $description = "' . addslashes($description) . '";
-            $link ="' . addslashes($filename) . '";
-        ?>
-        ' . file_get_contents($templatePath);
-
-        if (!is_dir($directory)) {
-            @mkdir($directory, 0777, true);
-        }
-        file_put_contents($filename, $generated);
-
-        // Normalise the start date; push past events forward a year so they stay visible
-        $ts = strtotime($start_date);
-        $start_date = $ts ? date('Y-m-d', $ts) : date('Y-m-d');
-        if (date('Y-m-d') > $start_date) {
-            $start_date = date('Y-m-d', strtotime('+1 year', strtotime($start_date)));
-        }
-
-        $stmt = $conn->prepare("INSERT INTO Events (EventName, EventDate, EventWhen, EventAddress, Link, EventImage)
-                                VALUES (:name, :date, :when, :address, :link, :image)
-                                ON DUPLICATE KEY UPDATE EventDate = VALUES(EventDate), EventWhen = VALUES(EventWhen),
-                                    EventAddress = VALUES(EventAddress), EventImage = VALUES(EventImage)");
-        $stmt->execute([
-            ':name' => $title,
-            ':date' => $start_date,
-            ':when' => $when,
-            ':address' => $address,
-            ':link' => $filename,
-            ':image' => $image,
-        ]);
-
-        $idStmt = $conn->prepare("SELECT EventID FROM Events WHERE Link = :link");
-        $idStmt->execute([':link' => $filename]);
-        $id = $idStmt->fetchColumn();
-
-        return ['id' => $id ? (int)$id : null, 'filename' => $filename];
-    }
+    // persistApiEvent() lives in includes/persist-api-event.php (shared with search page)
 
     $interestsEvents = []; // Initialize as empty array
     if (!empty($key)) { // Only proceed if the API key is set
