@@ -2,6 +2,7 @@
     session_start();
     // Load local database configuration
     require_once '../config/database_local.php';
+    require_once __DIR__ . '/../config/features.php';
 
     // Database connection using local config
     $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME;
@@ -56,8 +57,11 @@
             <p class='nav'><a href="../profilePage/account.php">Account</a></p>
             <?php
                 if (isset($_SESSION['userID'])){
+                    $cartNav = feature_enabled('shopping_cart')
+                        ? "<p class='nav'><a href=\"../shoppingCart/shopping-cart.php\">Cart</a></p>"
+                        : '';
                     echo "
-                    <p class='nav'><a href=\"../shoppingCart/shopping-cart.php\">Cart</a></p>
+                    $cartNav
                     <p class='nav'><a href=\"../calendar/events.php\">My Events</a></p>";
                 }
             ?>

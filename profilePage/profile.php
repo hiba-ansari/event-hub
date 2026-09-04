@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once __DIR__ . '/../config/features.php';
 
 // Database connection using PDO
 $dsn = 'mysql:host=talsprddb02.int.its.rmit.edu.au;dbname=COSC3046_2402_UGRD_1479_G12';
@@ -83,8 +84,11 @@ $themeCssFile = ($user['Theme'] == 'dark') ? 'css/dark-theme.css' : (($user['The
             <p class='nav'><a href="../profilePage/account.php">Account</a></p>
             <?php
                 if (isset($_SESSION['userID'])){
+                    $cartNav = feature_enabled('shopping_cart')
+                        ? "<p class='nav'><a href=\"../shoppingCart/shopping-cart.php\">Cart</a></p>"
+                        : '';
                     echo "
-                    <p class='nav'><a href=\"../shoppingCart/shopping-cart.php\">Cart</a></p>
+                    $cartNav
                     <p class='nav'><a href=\"../calendar/events.php\">My Events</a></p>";
                 }
             ?>

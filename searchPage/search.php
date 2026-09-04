@@ -1,6 +1,7 @@
 <?php
     error_log("*************** Inside search.php (XAMPP htdocs version) - Using events_results - NO LINKS");
     session_start();
+    require_once __DIR__ . '/../config/features.php';
     if (isset($_GET["query"])) {
         $key = "c30be58e6984eafadc346b28a3422bd9638cbc88c9783243ad3b7310f81590e1";
         $userQuery = $_GET["query"];
@@ -90,8 +91,11 @@
             <p class='nav'><a href="../profilePage/view_profile.php">Account</a></p>
             <?php
                 if (isset($_SESSION['userID'])){
+                    $cartNav = feature_enabled('shopping_cart')
+                        ? "<p class='nav'><a href=\"../shoppingCart/shopping-cart.php\">Cart</a></p>"
+                        : '';
                     echo "
-                    <p class='nav'><a href=\"../shoppingCart/shopping-cart.php\">Cart</a></p>
+                    $cartNav
                     <p class='nav'><a href=\"../calendar/events.php\">My Events</a></p>";
                 }
             ?>

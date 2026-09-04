@@ -2,6 +2,7 @@
 ob_start();
 session_start();
 error_reporting(E_ALL ^ E_NOTICE);
+require_once __DIR__ . '/config/features.php';
 
 //echo session details
 // $sessionDetails = implode(",", $_SESSION);
@@ -52,8 +53,11 @@ echo "logged in? " . json_encode($isLoggedIn);
             <p class='nav'><a href="../profilePage/account.php">Account</a></p>
             <?php
                 if (isset($_SESSION['userID'])){
+                    $cartNav = feature_enabled('shopping_cart')
+                        ? "<p class='nav'><a href=\"../shoppingCart/shopping-cart.php\">Cart</a></p>"
+                        : '';
                     echo "
-                    <p class='nav'><a href=\"../shoppingCart/shopping-cart.php\">Cart</a></p>
+                    $cartNav
                     <p class='nav'><a href=\"../calendar/events.php\">My Events</a></p>";
                 }
             ?>

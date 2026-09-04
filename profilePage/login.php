@@ -5,6 +5,7 @@ ini_set('display_errors', 1);
 
 // Load local database configuration
 require_once '../config/database_local.php';
+require_once __DIR__ . '/../config/features.php';
 
 // Database connection using local config
 $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME;
@@ -165,7 +166,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['archive_account']) && 
     <div class='column right'>
         <?php if (isset($_SESSION['userID'])): ?>
             <p class='nav'><a href="../profilePage/view_profile.php">Account</a></p>
+            <?php if (feature_enabled('shopping_cart')): ?>
             <p class='nav'><a href="../shoppingCart/shopping-cart.php">Cart</a></p>
+            <?php endif; ?>
             <p class='nav'><a href="../calendar/events.php">My Events</a></p>
         <?php else: ?>
             <p class='nav'><a href="../profilePage/account.php">Account</a></p>

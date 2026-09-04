@@ -1,5 +1,12 @@
 <?php
 session_start();
+require_once __DIR__ . '/../config/features.php';
+
+// Shopping cart is disabled behind a feature flag – send visitors home.
+if (!feature_enabled('shopping_cart')) {
+    header('Location: ../homePage/homepage.php');
+    exit();
+}
 
 $products = [
     1 => ["name" => "Paid Event", "price" => 10.00, "description" => "This is a paid event", "image" => "../images/canyon.jpg"],

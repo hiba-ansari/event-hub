@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once __DIR__ . '/../config/features.php';
 
 // Handle logout
 if (isset($_POST['logout'])) {
@@ -107,7 +108,9 @@ try {
     </div>
     <div class='column right'>
         <p class='nav'><a href="view_profile.php">Account</a></p>
+        <?php if (feature_enabled('shopping_cart')): ?>
         <p class='nav'><a href="../shoppingCart/shopping-cart.php">Cart</a></p>
+        <?php endif; ?>
         <p class='nav'><a href="../calendar/events.php">My Events</a></p>
         <p class='nav'><a href="../discussion/discussion.php">Discussions</a></p>
         <p class='nav'><a href="../searchPage/search.php">Search</a></p>

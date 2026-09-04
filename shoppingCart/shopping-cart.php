@@ -1,5 +1,13 @@
 <?php
     session_start();
+    require_once __DIR__ . '/../config/features.php';
+
+    // Shopping cart is disabled behind a feature flag – send visitors home.
+    if (!feature_enabled('shopping_cart')) {
+        header('Location: ../homePage/homepage.php');
+        exit();
+    }
+
     $dsn = 'mysql:host=talsprddb02.int.its.rmit.edu.au;dbname=COSC3046_2402_UGRD_1479_G12';
     $user = 'COSC3046_2402_UGRD_1479_G12';
     $pass = 'LtEXbUiTF7Fm';
