@@ -1,9 +1,10 @@
 <?php
 session_start();
 require_once __DIR__ . '/../config/features.php';
-$dsn = 'mysql:host=talsprddb02.int.its.rmit.edu.au;dbname=COSC3046_2402_UGRD_1479_G12';
-$user = 'COSC3046_2402_UGRD_1479_G12';
-$pass = 'LtEXbUiTF7Fm';
+require_once __DIR__ . '/../config/database_local.php';
+$dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME;
+$user = DB_USER;
+$pass = DB_PASS;
 $conn = new PDO($dsn, $user, $pass);
 ?>
 
