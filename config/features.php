@@ -12,7 +12,7 @@ if (!function_exists('feature_enabled')) {
         // ── EDIT THESE FLAGS ──────────────────────────────────────
         $flags = [
             // Shopping cart: nav link, cart pages, "Add To Cart" button.
-            'shopping_cart' => true,
+            'shopping_cart' => false,
         ];
 
         return (bool) ($flags[$feature] ?? false);

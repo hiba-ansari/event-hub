@@ -1,44 +1,14 @@
 <?php
     ob_start();
-    $userHobbies = $_SESSION['hobbies'] ?? '';
-    $userLocation = $_SESSION['location'] ?? '';
-    $key = getenv('SERP_API_KEY') ?: ''; // Use environment variable, fallback to empty string
-
-    $directory = '../pages/';
-
-    $templatePath = '../eventDetails/details.php';
-
-    $pageContent = file_get_contents($templatePath);
 
     // Load local database configuration
     require_once '../config/database_local.php';
     require_once __DIR__ . '/../config/features.php';
-    require_once __DIR__ . '/../includes/persist-api-event.php';
 
-    // Shared connection for persisting API events on this page
+    // Shared connection for the events carousel on this page
     $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME;
     $conn = new PDO($dsn, DB_USER, DB_PASS);
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-    // Events the current user has already saved (for rendering + button state)
-    $savedIds = [];
-    if (!empty($_SESSION['userID'])) {
-        $savedStmt = $conn->prepare("SELECT EventID FROM SavedEvents WHERE UserID = :uid");
-        $savedStmt->execute([':uid' => $_SESSION['userID']]);
-        $savedIds = $savedStmt->fetchAll(PDO::FETCH_COLUMN);
-    }
-
-    // persistApiEvent() lives in includes/persist-api-event.php (shared with search page)
-
-    $interestsEvents = []; // Initialize as empty array
-    if (!empty($key)) { // Only proceed if the API key is set
-        $api_url_interests = 'https://serpapi.com/search.json?engine=google_events&q=australia%20'.$userHobbies.'&hl=en&api_key='.$key;
-        $response = @file_get_contents($api_url_interests); // Suppress warnings with @
-        if ($response !== false) {
-            $interestsData = json_decode($response, true);
-            $interestsEvents = $interestsData['events_results'] ?? [];
-        }
-    }
 ?>
 <!DOCTYPE html>
     <html lang="en">
@@ -102,66 +72,38 @@
     </div>
 
     <div id="home-content" style="margin-left: 3vmin; margin-right: 3vmin; position: relative;">
-        <h3 style="font-size: var(--h3-size);">TRENDING NEAR YOU</h3>
+        <h3 style="font-size: var(--h3-size);">UPCOMING EVENTS</h3>
         <div class="trending-carousel-container" style="margin-bottom: 12vmin; position: relative;">
             <?php
-                // --- BEGIN NEW LOGIC FOR TRENDING EVENTS (based on Weekend) ---
-                // Calculate the upcoming weekend (Saturday and Sunday)
-                $today = new DateTime();
-                $daysUntilSat = 6 - $today->format('w'); // w is 0 for Sunday, 1 for Monday, ..., 6 for Saturday
-                if ($daysUntilSat <= 0) {
-                    $daysUntilSat += 7; // If today is Sat/Sun, get next weekend
+                // --- UPCOMING EVENTS: the current user's saved events that have not happened yet ---
+                $upcomingEvents = [];
+                if (!empty($_SESSION['userID'])) {
+                    try {
+                        $stmt = $conn->prepare("
+                            SELECT Events.EventID, EventName, EventDate, EventWhen, EventAddress, Link, EventImage
+                            FROM SavedEvents
+                            JOIN Events ON SavedEvents.EventID = Events.EventID
+                            WHERE SavedEvents.UserID = :uid AND Events.EventDate >= CURDATE()
+                            ORDER BY Events.EventDate ASC
+                        ");
+                        $stmt->bindParam(':uid', $_SESSION['userID'], PDO::PARAM_INT);
+                        $stmt->execute();
+                        $upcomingEvents = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    } catch (PDOException $e) {
+                        error_log("Database error fetching upcoming events: " . $e->getMessage());
+                        $upcomingEvents = [];
+                    }
                 }
-                $weekendDateStart = clone $today;
-                $weekendDateStart->modify("+$daysUntilSat days");
-                $weekendDateEnd = clone $weekendDateStart;
-                $weekendDateEnd->modify('+1 day'); // Sunday
-
-                $weekendStartStr = $weekendDateStart->format('Y-m-d');
-                $weekendEndStr = $weekendDateEnd->format('Y-m-d');
-
-                // Local DB config + $conn were loaded at the top of this page
-
-                try {
-                    // Prepare and execute the query to get events for the weekend
-                    $stmt = $conn->prepare("
-                        SELECT EventID, EventName, EventDate, EventWhen, EventAddress, Link, EventImage
-                        FROM Events
-                        WHERE EventDate BETWEEN :start_date AND :end_date
-                        ORDER BY EventDate ASC
-                        LIMIT 3
-                    ");
-                    $stmt->bindParam(':start_date', $weekendStartStr, PDO::PARAM_STR);
-                    $stmt->bindParam(':end_date', $weekendEndStr, PDO::PARAM_STR);
-                    $stmt->execute();
-
-                    // Fetch the results
-                    $weekendEvents = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                } catch (PDOException $e) {
-                    error_log("Database error fetching weekend events: " . $e->getMessage());
-                    $weekendEvents = []; // Return empty array on error
-                }
-                // --- END NEW LOGIC FOR TRENDING EVENTS (based on Weekend) ---
 
 
                 error_reporting(E_ALL ^ E_NOTICE);
-                // Use $weekendEvents instead of $interestsEvents
-                if (!empty($weekendEvents)) {
-                    foreach ($weekendEvents as $event) {
+                if (!empty($upcomingEvents)) {
+                    foreach ($upcomingEvents as $event) {
                         // Map database columns to the variables expected by the UI
-                        $eventId = $event['EventID'];
                         $title = $event['EventName'];
                         $date = $event['EventWhen']; // Use EventWhen for display
                         $address = $event['EventAddress'];
                         $image = $event['EventImage'];
-                        // $filename = $event['Link']; // No longer used for linking
-
-                        // Whether this event is already in the user's calendar
-                        $isSaved = in_array($eventId, $savedIds);
-                        $saveLabel = $isSaved ? "&#10003;" : "+";
-                        $saveStyle = $isSaved
-                            ? "cursor: pointer; background-color:#0D99FF; color:white;"
-                            : "cursor: pointer;";
 
                         // Determine category based on the event title (similar to existing logic)
                         $eventsString = $title . ' ' . $address . ' ' . $date;
@@ -190,8 +132,6 @@
                                         <div><img src='$image' alt='$title'></div> <!-- Changed from <a> to <div> -->
                                         <h3 id='trending-heading'><div id='event-link'>$title</div></h3> <!-- Changed from <a> to <div> -->
                                         <p id='description'><strong>Date:</strong> $date<br><strong>Address:</strong> $address</p>
-                                        <!-- Share button removed as there's no specific link to share -->
-                                        <button onclick='saveEvent(this)' class='trending-save-event-btn' data-event-id='$eventId' style='$saveStyle'>$saveLabel</button>
                                         <div class='trending-event-tag-container'>
                                             <p>$category</p>
                                         </div>
@@ -201,155 +141,14 @@
                         ";
                     }
                 } else {
-                    echo "<p>No events found.</p>";
+                    echo "<p class='no-upcoming-events'>You have no upcoming events. Save events from Search or My Events to see them here.</p>";
                 }
                 ?>
 
+            <?php if (!empty($upcomingEvents)): ?>
             <button id="prev" onclick="prevSlide()">&#10094;</button>
             <button id="next" onclick="nextSlide()">&#10095;</button>
-        </div>
-
-        <div class="section" style="margin-bottom: var(--section-bottom);">
-            <h3 style="font-size: var(--h3-size);">BASED ON YOUR INTERESTS</h3>
-            <div class="home-listed-events-container">
-                <?php
-                    
-
-                    error_reporting(E_ALL ^ E_NOTICE);
-                    if (!empty($interestsEvents)) {
-                        foreach ($interestsEvents as $index => $event) {
-                            $title = is_array($event['title']) ? implode(', ', $event['title']) : ($event['title']);
-                            $date = is_array($event['date']['when']) ? implode(', ', $event['date']['when']) : ($event['date']['when']);
-                            $address = is_array($event['address']) ? implode(', ', $event['address']) : ($event['address']);
-                            $image = $event['thumbnail'];
-
-                            // Persist the event so it can be saved to a calendar
-                            $persisted = persistApiEvent($conn, $event, $directory, $templatePath);
-                            $filename = $persisted['filename'];
-                            $eventId = $persisted['id'];
-
-                            $isSaved = $eventId && in_array($eventId, $savedIds);
-                            $saveLabel = $isSaved ? "&#10003;" : "+";
-                            $saveStyle = $isSaved
-                                ? "cursor: pointer; background-color:#0D99FF; color:white;"
-                                : "cursor: pointer;";
-
-                            $eventsString = implode(', ', $event);
-                            //echo "$eventsString";
-                            //reformatting
-                            if (stripos($eventsString, 'gaming') || stripos($eventsString, 'game')) {
-                                $category = "🎮 GAMING";
-                            }
-                            else if (stripos($eventsString, 'art') || 
-                            stripos($eventsString, 'arts') || 
-                            stripos($eventsString, 'gallery')) {
-                                $category = "🎨 ART";
-                            }
-                            else if (stripos($eventsString, 'sport')) {
-                                $category = "🏀 SPORT";
-                            }
-                            else if (stripos($eventsString, 'music') || stripos($eventsString, 'Music') || stripos($eventsString, 'band')){
-                                $category = "🎵 MUSIC";
-                            }
-                            else {
-                                $category = "";
-                            }
-
-                            echo "
-                                    <div class='event-container'>
-                                        <a href='$filename'><img src='$image' alt='$title'></a>
-                                        <h3 id='trending-heading'><a href='$filename' id='event-link'>$title</a></h3>
-                                        <p id='description'><strong>Date:</strong> $date<br><strong>Address:</strong> $address</p>
-                                        <button onclick='copyEventLink(\"$filename\"); changeButtonText(this)' class='share-event-btn' style='cursor: pointer;'>Share</button>
-                                        <button onclick='saveEvent(this)' class='save-event-btn' data-event-id='$eventId' style='$saveStyle'>$saveLabel</button>
-                                        <div class='search-event-tag-container'>
-                                                <p>$category</p>
-                                        </div>
-                                    </div>
-                                    ";
-
-                        }
-                    } else {
-                        echo "<p>No events found.</p>";
-                    }
-                ?>
-            </div>
-        </div>
-
-        <div class="section" style="margin-bottom: var(--section-bottom);">
-            <h3 style="font-size: var(--h3-size);">BASED ON YOUR RECENT EVENTS</h3>
-            <div class="home-listed-events-container">
-                <?php
-                    // --- API fetch for "recent events" (based on user location) ---
-                    $recentEvents = []; // Initialize as empty array
-                    if (!empty($key)) { // Only proceed if the API key is set
-                        $api_url_recents = 'https://serpapi.com/search.json?engine=google_events&q=australia%20'.$userLocation.'&hl=en&api_key='.$key;
-                        $response_recents = @file_get_contents($api_url_recents); // Suppress warnings with @
-                        if ($response_recents !== false) {
-                            $recentsData = json_decode($response_recents, true);
-                            $recentEvents = $recentsData['events_results'] ?? [];
-                        }
-                    }
-                    // --- END recent events fetch ---
-
-                    error_reporting(E_ALL ^ E_NOTICE);
-                    if (!empty($recentEvents)) {
-                        foreach ($recentEvents as $index => $event) {
-                            $title = is_array($event['title']) ? implode(', ', $event['title']) : ($event['title']);
-                            $date = is_array($event['date']['when']) ? implode(', ', $event['date']['when']) : ($event['date']['when']);
-                            $address = is_array($event['address']) ? implode(', ', $event['address']) : ($event['address']);
-                            $image = $event['thumbnail'];
-
-                            // Persist the event so it can be saved to a calendar
-                            $persisted = persistApiEvent($conn, $event, $directory, $templatePath);
-                            $filename = $persisted['filename'];
-                            $eventId = $persisted['id'];
-
-                            $isSaved = $eventId && in_array($eventId, $savedIds);
-                            $saveLabel = $isSaved ? "&#10003;" : "+";
-                            $saveStyle = $isSaved
-                                ? "cursor: pointer; background-color:#0D99FF; color:white;"
-                                : "cursor: pointer;";
-
-                            $eventsString = implode(', ', $event);
-                            //reformatting
-                            if (stripos($eventsString, 'gaming') || stripos($eventsString, 'game')) {
-                                $category = "🎮 GAMING";
-                            }
-                            else if (stripos($eventsString, 'art') || 
-                            stripos($eventsString, 'arts') || 
-                            stripos($eventsString, 'gallery')) {
-                                $category = "🎨 ART";
-                            }
-                            else if (stripos($eventsString, 'sport')) {
-                                $category = "🏀 SPORT";
-                            }
-                            else if (stripos($eventsString, 'music') || stripos($eventsString, 'Music') || stripos($eventsString, 'band')){
-                                $category = "🎵 MUSIC";
-                            }
-                            else {
-                                $category = "";
-                            }
-
-                            echo "
-                                    <div class='event-container'>
-                                        <a href='$filename'><img src='$image' alt='$title'></a>
-                                        <h3 id='title'><a href='$filename' id='event-link'>$title</a></h3>
-                                        <p id='description'><strong>Date:</strong> $date<br><strong>Address:</strong> $address</p>
-                                        <button onclick='copyEventLink(\"$filename\"); changeButtonText(this)' class='share-event-btn' style='cursor: pointer;'>Share</button>
-                                        <button onclick='saveEvent(this)' class='save-event-btn' data-event-id='$eventId' style='$saveStyle'>$saveLabel</button>
-                                        <div class='search-event-tag-container'>
-                                                <p>$category</p>
-                                        </div>
-                                    </div>
-                                    ";
-
-                        }
-                    } else {
-                        echo "<p>No events found.</p>";
-                    }
-                ?>
-            </div>
+            <?php endif; ?>
         </div>
     </div>
     <script src="homepage-script.js?v=<?php echo filemtime('homepage-script.js'); ?>"></script>

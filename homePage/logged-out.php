@@ -154,7 +154,6 @@
                                     <div class='home-trending-event-container'>
                                         <img src='../images/canyon.png' alt='canyon'>
                                         <button class='trending-share-event-btn'>Share</button>
-                                        <button class='trending-save-event-btn'>+</button>
                                         <h3 id='trending-heading'>#1 EVENT NAME</h3>
                                         <div class='trending-event-tag-container'>
                                             <p>🏀 SPORT</p>
@@ -167,7 +166,6 @@
                                     <div class='home-trending-event-container'>
                                         <img src='../images/canyon.png' alt='canyon'>
                                         <button class='trending-share-event-btn'>Share</button>
-                                        <button class='trending-save-event-btn'>+</button>
                                         <h3 id='trending-heading'>#1 EVENT NAME</h3>
                                         <div class='trending-event-tag-container'>
                                             <p>🏀 SPORT</p>
@@ -180,7 +178,6 @@
                                     <div class='home-trending-event-container'>
                                         <img src='../images/canyon.png' alt='canyon'>
                                         <button class='trending-share-event-btn'>Share</button>
-                                        <button class='trending-save-event-btn'>+</button>
                                         <h3 id='trending-heading'>#1 EVENT NAME</h3>
                                         <div class='trending-event-tag-container'>
                                             <p>🏀 SPORT</p>
