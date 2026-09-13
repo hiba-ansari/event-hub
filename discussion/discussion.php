@@ -23,7 +23,11 @@ $conn = new PDO($dsn, $user, $pass);
             <a href='../homePage/homepage.php' class="logo" style='font-size:40px;font-weight:600'><img src='../images/logo.png' style='width:50px;vertical-align:middle'> Local Event Hub</a>
         </div>
         <div class='column right'>
+            <?php if (isset($_SESSION['userID'])): ?>
+            <p class='nav'><a href="../profilePage/view_profile.php">Account</a></p>
+            <?php else: ?>
             <p class='nav'><a href="../profilePage/account.php">Account</a></p>
+            <?php endif; ?>
             <?php
                 if (isset($_SESSION['userID'])){
                     $cartNav = feature_enabled('shopping_cart')
@@ -95,7 +99,11 @@ $conn = new PDO($dsn, $user, $pass);
             </div>
             <div class="footer-column">
                 <h3>Account</h3>
+                <?php if (isset($_SESSION['userID'])): ?>
+                <a href="../profilePage/view_profile.php">Account</a>
+                <?php else: ?>
                 <a href="../profilePage/account.php">Account</a>
+                <?php endif; ?>
                 <a href="../calendar/events.html">My Events</a>
                 <a href="../profilePage/login.php"> Login </a>
             </div>

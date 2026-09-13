@@ -260,7 +260,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['archive_account']) && 
         </div>
         <div class="footer-column">
             <h3>Account</h3>
+            <?php if (isset($_SESSION['userID'])): ?>
+            <a href="../profilePage/view_profile.php">Account</a>
+            <?php else: ?>
             <a href="../profilePage/account.php">Account</a>
+            <?php endif; ?>
             <a href="../calendar/events.html">My Events</a>
         </div>
     </div>
