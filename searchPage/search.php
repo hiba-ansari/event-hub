@@ -175,26 +175,6 @@
                             $image = $event_item['image'];
                             $description = $event_item['description'];
 
-                            // Determine category based on the event title (similar to existing logic)
-                            $eventsString = $title . ' ' . $address . ' ' . $date;
-                            if (stripos($eventsString, 'gaming') || stripos($eventsString, 'game')) {
-                                $category = "🎮 GAMING";
-                            }
-                            else if (stripos($eventsString, 'art') ||
-                            stripos($eventsString, 'arts') ||
-                            stripos($eventsString, 'gallery')) {
-                                $category = "🎨 ART";
-                            }
-                            else if (stripos($eventsString, 'sport')) {
-                                $category = "🏀 SPORT";
-                            }
-                            else if (stripos($eventsString, 'music') || stripos($eventsString, 'Music') || stripos($eventsString, 'band')){
-                                $category = "🎵 MUSIC";
-                            }
-                            else {
-                                $category = "";
-                            }
-
                             // Use a div/span instead of an anchor tag for the image and title
                             if (empty($_SESSION['userID']) || !isset($_SESSION['userID'])) {
                                 echo "
@@ -203,9 +183,6 @@
                                         <h3 id='title'><div id='event-link'>$title</div></h3>
                                         <p id='description'><strong>Date:</strong> $date<br><strong>Address:</strong> $address</p>
                                         <!-- Share button removed as there's no specific link to share -->
-                                        <div class='search-event-tag-container'>
-                                                <p>$category</p>
-                                        </div>
                                     </div>
                                     ";
                             }
@@ -236,9 +213,6 @@
                                         <h3 id='title'>$titleBlock</h3>
                                         <p id='description'><strong>Date:</strong> $date<br><strong>Address:</strong> $address</p>
                                         $saveButton
-                                        <div class='search-event-tag-container'>
-                                                <p>$category</p>
-                                        </div>
                                     </div>
                                     ";
                                 }

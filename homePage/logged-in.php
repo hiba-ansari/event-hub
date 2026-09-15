@@ -105,26 +105,6 @@
                         $address = $event['EventAddress'];
                         $image = $event['EventImage'];
 
-                        // Determine category based on the event title (similar to existing logic)
-                        $eventsString = $title . ' ' . $address . ' ' . $date;
-                        if (stripos($eventsString, 'gaming') || stripos($eventsString, 'game')) {
-                            $category = "🎮 GAMING";
-                        }
-                        else if (stripos($eventsString, 'art') ||
-                        stripos($eventsString, 'arts') ||
-                        stripos($eventsString, 'gallery')) {
-                            $category = "🎨 ART";
-                        }
-                        else if (stripos($eventsString, 'sport')) {
-                            $category = "🏀 SPORT";
-                        }
-                        else if (stripos($eventsString, 'music') || stripos($eventsString, 'Music') || stripos($eventsString, 'band')){
-                            $category = "🎵 MUSIC";
-                        }
-                        else {
-                            $category = "";
-                        }
-
                         echo "
                             <div class='trending-carousel-slide'>
                                 <div class='home-trending-event'>
@@ -132,9 +112,6 @@
                                         <div><img src='$image' alt='$title'></div> <!-- Changed from <a> to <div> -->
                                         <h3 id='trending-heading'><div id='event-link'>$title</div></h3> <!-- Changed from <a> to <div> -->
                                         <p id='description'><strong>Date:</strong> $date<br><strong>Address:</strong> $address</p>
-                                        <div class='trending-event-tag-container'>
-                                            <p>$category</p>
-                                        </div>
                                     </div>
                                 </div>
                             </div>

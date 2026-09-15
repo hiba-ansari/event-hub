@@ -111,26 +111,6 @@
                         $image = $event['EventImage'];
                         // $filename = $event['Link']; // No longer used for linking
 
-                        // Determine category based on the event title (similar to existing logic)
-                        $eventsString = $title . ' ' . $address . ' ' . $date;
-                        if (stripos($eventsString, 'gaming') || stripos($eventsString, 'game')) {
-                            $category = "🎮 GAMING";
-                        }
-                        else if (stripos($eventsString, 'art') ||
-                        stripos($eventsString, 'arts') ||
-                        stripos($eventsString, 'gallery')) {
-                            $category = "🎨 ART";
-                        }
-                        else if (stripos($eventsString, 'sport')) {
-                            $category = "🏀 SPORT";
-                        }
-                        else if (stripos($eventsString, 'music') || stripos($eventsString, 'Music') || stripos($eventsString, 'band')){
-                            $category = "🎵 MUSIC";
-                        }
-                        else {
-                            $category = "";
-                        }
-
                         echo "
                             <div class='trending-carousel-slide'>
                                 <div class='home-trending-event'>
@@ -139,9 +119,6 @@
                                         <h3 id='title'><div id='event-link'>$title</div></h3> <!-- Changed from <a> to <div> -->
                                         <p id='description'><strong>Date:</strong> $date<br><strong>Address:</strong> $address</p>
                                         <!-- Share button removed as there's no specific link to share -->
-                                        <div class='trending-event-tag-container'>
-                                            <p>$category</p>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -155,9 +132,6 @@
                                         <img src='../images/canyon.png' alt='canyon'>
                                         <button class='trending-share-event-btn'>Share</button>
                                         <h3 id='trending-heading'>#1 EVENT NAME</h3>
-                                        <div class='trending-event-tag-container'>
-                                            <p>🏀 SPORT</p>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -167,9 +141,6 @@
                                         <img src='../images/canyon.png' alt='canyon'>
                                         <button class='trending-share-event-btn'>Share</button>
                                         <h3 id='trending-heading'>#1 EVENT NAME</h3>
-                                        <div class='trending-event-tag-container'>
-                                            <p>🏀 SPORT</p>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -179,9 +150,6 @@
                                         <img src='../images/canyon.png' alt='canyon'>
                                         <button class='trending-share-event-btn'>Share</button>
                                         <h3 id='trending-heading'>#1 EVENT NAME</h3>
-                                        <div class='trending-event-tag-container'>
-                                            <p>🏀 SPORT</p>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -261,34 +229,12 @@
 
                             if (!empty($freeEvents)) {
                                 foreach ($freeEvents as $index => $freeEvent) {
-                                    //reformatting
-                                    if (stripos($eventsString, 'gaming') || stripos($eventsString, 'game')) {
-                                        $category = "🎮 GAMING";
-                                    }
-                                    else if (stripos($eventsString, 'art') || 
-                                    stripos($eventsString, 'arts') || 
-                                    stripos($eventsString, 'gallery')) {
-                                        $category = "🎨 ART";
-                                    }
-                                    else if (stripos($eventsString, 'sport')) {
-                                        $category = "🏀 SPORT";
-                                    }
-                                    else if (stripos($eventsString, 'music') || stripos($eventsString, 'Music') || stripos($eventsString, 'band')){
-                                        $category = "🎵 MUSIC";
-                                    }
-                                    else {
-                                        $category = "";
-                                    }
-
                                     echo "
                                             <div class='event-container'>
                                                 <a href='$filename'><img src='$image' alt='$title'></a>
                                                 <h3 id='title'><a href='$filename' id='event-link'>$title</a></h3>
                                                 <p id='description'><strong>Date:</strong> $date<br><strong>Address:</strong> $address</p>
                                                 <button onclick='copyEventLink(\"$filename\"); changeButtonText(this)' class='share-event-btn' style='cursor: pointer;'>Share</button>
-                                                <div class='search-event-tag-container'>
-                                                        <p>$category</p>
-                                                </div>
                                             </div>
                                         ";
                                 }
